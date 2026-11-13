@@ -50,19 +50,29 @@ function fit(text: string, width: number, measure: MeasureText, font: "tiny" | "
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
+/** How text is drawn, from the app's settings. */
+export interface TextStyle {
+  measure: MeasureText;
+  /** Draw every label in capitals; digits and symbols are unchanged. */
+  uppercase: boolean;
+}
+
+const cased = (text: string, style: TextStyle) => (style.uppercase ? text.toUpperCase() : text);
+
 function barColor(percent: number): string {
   if (percent >= 90) return RED;
   if (percent >= 70) return AMBER;
   return GREEN;
 }
 
-function windowElements(window: UsageWindow, row: number, y: number, nowSeconds: number): Element[] {
+function windowElements(window: UsageWindow, row: number, y: number, nowSeconds: number, style: TextStyle): Element[] {
+  const name = cased(window.name.slice(0, 3), style);
   const percent = currentPercent(window, nowSeconds);
   if (percent === null) {
     // No limit to draw against: the value takes the bar's place.
     return [
-      { id: `w${row}_name`, type: "text", x: NAME_X, y, text: window.name.slice(0, 3), font: FONT, color: GREY },
-      { id: `w${row}_value`, type: "text", x: WIDTH, y, align: "top_right", text: window.value ?? "", font: FONT, color: "#FFFFFFFF" },
+      { id: `w${row}_name`, type: "text", x: NAME_X, y, text: name, font: FONT, color: GREY },
+      { id: `w${row}_value`, type: "text", x: WIDTH, y, align: "top_right", text: cased(window.value ?? "", style), font: FONT, color: "#FFFFFFFF" },
     ];
   }
   const full = percent >= 100;
@@ -72,7 +82,7 @@ function windowElements(window: UsageWindow, row: number, y: number, nowSeconds:
     full && window.resetsAt !== null ? formatRemaining(window.resetsAt, nowSeconds) : `${Math.round(percent)}%`;
 
   const elements: Element[] = [
-    { id: `w${row}_name`, type: "text", x: NAME_X, y, text: window.name.slice(0, 3), font: FONT, color: GREY },
+    { id: `w${row}_name`, type: "text", x: NAME_X, y, text: name, font: FONT, color: GREY },
     {
       id: `w${row}_box`,
       type: "rectangle",
@@ -90,7 +100,7 @@ function windowElements(window: UsageWindow, row: number, y: number, nowSeconds:
       x: WIDTH,
       y,
       align: "top_right",
-      text: value,
+      text: cased(value, style),
       font: FONT,
       color: full ? RED : "#FFFFFFFF",
     },
@@ -112,14 +122,15 @@ function windowElements(window: UsageWindow, row: number, y: number, nowSeconds:
 }
 
 /** The elements for one account's page. */
-export function accountFrame(account: Account, nowSeconds: number, measure: MeasureText): Element[] {
+export function accountFrame(account: Account, nowSeconds: number, style: TextStyle): Element[] {
+  const label = (text: string, font: "tiny" | "small") => fit(cased(text, style), LABEL_WIDTH, style.measure, font);
   const elements: Element[] = [
     {
       id: "provider",
       type: "text",
       x: 0,
       y: ROW_Y[0],
-      text: fit(account.providerName ?? capitalize(account.provider), LABEL_WIDTH, measure, FONT),
+      text: label(account.providerName ?? capitalize(account.provider), FONT),
       font: FONT,
       color: PROVIDER_COLORS[account.provider] ?? "#FFFFFFFF",
     },
@@ -128,27 +139,27 @@ export function accountFrame(account: Account, nowSeconds: number, measure: Meas
       type: "text",
       x: 0,
       y: ACCOUNT_Y,
-      text: fit(account.account, LABEL_WIDTH, measure, "tiny"),
+      text: label(account.account, "tiny"),
       font: "tiny",
       color: account.blocked ? RED : GREY,
     },
   ];
   if (account.error !== null) {
-    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: account.error, font: FONT, color: RED });
+    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: cased(account.error, style), font: FONT, color: RED });
     return elements;
   }
   const windows = account.windows.slice(0, ROW_Y.length);
   windows.forEach((window, row) => {
     const y = windows.length === 1 ? SINGLE_ROW_Y : ROW_Y[row];
-    elements.push(...windowElements(window, row, y, nowSeconds));
+    elements.push(...windowElements(window, row, y, nowSeconds, style));
   });
   if (windows.length === 0) {
-    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: "no data", font: FONT, color: GREY });
+    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: cased("no data", style), font: FONT, color: GREY });
   }
   return elements;
 }
 
 /** A one-line message, such as when the hub cannot be reached. */
-export function messageFrame(text: string): Element[] {
-  return [{ id: "message", type: "text", x: WIDTH / 2, y: 8, align: "center", text, font: "small", color: GREY }];
+export function messageFrame(text: string, style: TextStyle): Element[] {
+  return [{ id: "message", type: "text", x: WIDTH / 2, y: 8, align: "center", text: cased(text, style), font: "small", color: GREY }];
 }

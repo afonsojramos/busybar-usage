@@ -4,6 +4,7 @@ import { accountFrame } from "../src/frame.ts";
 
 /** About four pixels a character, close to the tiny font. */
 const measure = (text: string) => text.length * 4;
+const style = { measure, uppercase: false };
 import { formatRemaining, markStale, mergeAccounts, parseUsage, type Account } from "../src/usage.ts";
 
 const feed = (accounts: unknown[]) => JSON.stringify({ generated_at: "2026-11-13T14:00:00Z", accounts });
@@ -69,38 +70,47 @@ const texts = (elements: ReturnType<typeof accountFrame>) =>
   elements.flatMap((element) => (element.type === "text" ? [element.text] : []));
 
 test("a full window shows the time to its reset instead of 100%", () => {
-  const frame = accountFrame(account({ windows: [{ name: "7d", usedPercent: 100, resetsAt: 1000 + 3 * 3600, value: null }] }), 1000, measure);
+  const frame = accountFrame(account({ windows: [{ name: "7d", usedPercent: 100, resetsAt: 1000 + 3 * 3600, value: null }] }), 1000, style);
   assert.deepEqual(texts(frame), ["Claude", "yld", "7d", "3h"]);
 });
 
 test("a window without a percentage shows its value instead of a bar", () => {
   const [parsed] = parseUsage(feed([{ ...hubAccount, windows: [{ name: "bal", minutes: null, used_percent: null, resets_at: null, value: "$12.40" }] }])) ?? [];
   assert.equal(parsed.windows[0].value, "$12.40");
-  const frame = accountFrame(parsed, 1000, measure);
+  const frame = accountFrame(parsed, 1000, style);
   assert.deepEqual(texts(frame), ["Claude", "yld", "bal", "$12.40"]);
   assert.equal(frame.filter((element) => element.type === "rectangle").length, 0);
 });
 
 test("an error replaces the windows", () => {
-  const frame = accountFrame(account({ error: "sign in", windows: [{ name: "5h", usedPercent: 5, resetsAt: null, value: null }] }), 1000, measure);
+  const frame = accountFrame(account({ error: "sign in", windows: [{ name: "5h", usedPercent: 5, resetsAt: null, value: null }] }), 1000, style);
   assert.deepEqual(texts(frame), ["Claude", "yld", "sign in"]);
 });
 
 test("the feed's provider name wins over the id", () => {
   const [parsed] = parseUsage(feed([{ ...hubAccount, provider: "zai", provider_name: "z.ai" }])) ?? [];
-  assert.equal(texts(accountFrame(parsed, 1000, measure))[0], "z.ai");
+  assert.equal(texts(accountFrame(parsed, 1000, style))[0], "z.ai");
 });
 
 test("long names are cut to the column", () => {
-  const frame = accountFrame(account({ provider: "antigravity", account: "my_company" }), 1000, measure);
+  const frame = accountFrame(account({ provider: "antigravity", account: "my_company" }), 1000, style);
   assert.deepEqual(texts(frame).slice(0, 2), ["Antigr", "my_com"]);
+});
+
+test("uppercase draws every label in capitals and fits the capitals", () => {
+  const frame = accountFrame(
+    account({ provider: "claude", account: "gmail", windows: [{ name: "7d", usedPercent: 100, resetsAt: 1000 + 2 * 86400, value: null }] }),
+    1000,
+    { measure, uppercase: true },
+  );
+  assert.deepEqual(texts(frame), ["CLAUDE", "GMAIL", "7D", "2D"]);
 });
 
 test("ids stay unique within a frame", () => {
   const frame = accountFrame(
     account({ windows: [{ name: "5h", usedPercent: 50, resetsAt: null, value: null }, { name: "7d", usedPercent: 95, resetsAt: null, value: null }] }),
     1000,
-    measure,
+    style,
   );
   const ids = frame.map((element) => element.id);
   assert.equal(new Set(ids).size, ids.length);

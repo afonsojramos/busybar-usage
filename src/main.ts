@@ -20,6 +20,8 @@ const COMPANION_MAX_AGE_MS = 65 * 60_000;
 
 /** The optional CLIProxyAPI hub; empty when not set. */
 let hubUrl = "";
+/** From the "uppercase" setting. */
+let uppercase = false;
 /** Each source's last successful read, so one failing source keeps its last numbers. */
 let companionAccounts: Account[] = [];
 let hubAccounts: Account[] = [];
@@ -41,8 +43,9 @@ const measure = (text: string, font: "tiny" | "small") => textWidth(text, font);
 const report = (err: unknown) => console.error(`${APP}: ${err instanceof Error ? err.message : String(err)}`);
 
 function frame(): Element[] {
-  if (accounts.length === 0) return messageFrame(message);
-  return accountFrame(accounts[page % accounts.length], Math.floor(Date.now() / 1000), measure);
+  const style = { measure, uppercase };
+  if (accounts.length === 0) return messageFrame(message, style);
+  return accountFrame(accounts[page % accounts.length], Math.floor(Date.now() / 1000), style);
 }
 
 /** Sends the current page: clears elements it no longer uses and draws the ones that changed. */
@@ -118,13 +121,15 @@ async function refresh(): Promise<void> {
   draw();
 }
 
-/** Reads the hub URL from the app's settings, which the firmware serves to the running app. */
-async function loadHubUrl(): Promise<void> {
+/** Reads the app's settings, which the firmware serves to the running app. */
+async function loadSettings(): Promise<void> {
   const response = await fetch(`http://localhost/api/apps/settings?app_id=${APP}`);
   const document: unknown = JSON.parse(await response.text());
   const values = typeof document === "object" && document !== null ? (document as { values?: unknown }).values : null;
-  const url = typeof values === "object" && values !== null ? (values as { hub_url?: unknown }).hub_url : null;
-  if (typeof url === "string" && /^https?:\/\/\S+$/.test(url)) hubUrl = url;
+  if (typeof values !== "object" || values === null) return;
+  const { hub_url, uppercase: upper } = values as { hub_url?: unknown; uppercase?: unknown };
+  if (typeof hub_url === "string" && /^https?:\/\/\S+$/.test(hub_url)) hubUrl = hub_url;
+  uppercase = upper === true;
 }
 
 /**
@@ -132,7 +137,7 @@ async function loadHubUrl(): Promise<void> {
  */
 function main(): void {
   draw();
-  void loadHubUrl()
+  void loadSettings()
     .catch(report)
     .then(() => refresh())
     .catch(report);
