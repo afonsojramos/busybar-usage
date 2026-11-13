@@ -1,0 +1,12 @@
+{
+  "memory": 40000000000,
+  "loaded": {
+    "fixture/small:Q4_K_M": 2000000000,
+    "fixture/large:Q4_K_M": 8000000000
+  },
+  "stored": {
+    "fixture/small:Q4_K_M": 2000000000,
+    "fixture/large:Q4_K_M": 8000000000,
+    "fixture/idle": 500000000
+  }
+}
