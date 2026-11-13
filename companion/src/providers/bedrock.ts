@@ -185,6 +185,8 @@ function dollars(amount: number): string {
 export const bedrock: Provider = {
   id: "bedrock",
   name: NAME,
+  // Each Cost Explorer request costs $0.01, and its data changes a few times a day.
+  minIntervalSeconds: 3600,
   async fetch(context): Promise<FeedAccount[]> {
     const base = { provider: "bedrock", provider_name: NAME, account: accountLabel(null), blocked: false,
       observed_at: new Date(context.now() * 1000).toISOString(), windows: [] };

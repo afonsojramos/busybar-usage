@@ -180,6 +180,8 @@ async function localTokens(context: Context): Promise<number | null> {
 export const vertexai: Provider = {
   id: "vertexai",
   name: NAME,
+  // May run gcloud for a token, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context): Promise<FeedAccount[]> {
     const config = context.env.CLOUDSDK_CONFIG || join(context.home, ".config", "gcloud");
     const path = context.env.GOOGLE_APPLICATION_CREDENTIALS || join(config, "application_default_credentials.json");
