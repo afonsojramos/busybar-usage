@@ -150,6 +150,8 @@ function signedHeaders(
 export const doubao: Provider = {
   id: ID,
   name: "Doubao",
+  // Its only check is a one-token chat completion, which Ark bills.
+  minIntervalSeconds: 900,
   async fetch(context) {
     const key = await apiKey(context, ID, ["ARK_API_KEY", "VOLCENGINE_API_KEY", "DOUBAO_API_KEY"]);
     const entry = await providerEntry(context, ID);

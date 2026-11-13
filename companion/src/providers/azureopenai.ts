@@ -29,6 +29,8 @@ function object(value: unknown): Record<string, unknown> {
 export const azureopenai: Provider = {
   id: ID,
   name: "Azure OpenAI",
+  // Its only check is a chat completion, which Azure bills.
+  minIntervalSeconds: 900,
   async fetch(context) {
     const key = await apiKey(context, ID, ["AZURE_OPENAI_API_KEY"]);
     const entry = await providerEntry(context, ID);
