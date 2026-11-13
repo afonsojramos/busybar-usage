@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vite-plus/test";
 import { opendesign } from "../src/providers/opendesign.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -34,10 +30,7 @@ const configured = {
       '{"providers":{"opendesign":{"cookieHeader":"__Secure-better-auth.session_token=fake-session"}}}',
   },
 };
-const responses = (body: unknown = fixture) => [
-  json({ workspaceId: "workspace-fixture" }),
-  json(body),
-];
+const responses = (body: unknown = fixture) => [json({ workspaceId: "workspace-fixture" }), json(body)];
 
 test("opendesign: maps the CodexBar contract and sends the expected credential", async () => {
   const context = fakeContext({ ...configured, responses: responses() });
@@ -51,14 +44,8 @@ test("opendesign: maps the CodexBar contract and sends the expected credential",
     account.windows.map((w) => w.used_percent ?? w.value),
     [10, 20],
   );
-  assert.equal(
-    context.calls[0].url,
-    "https://amr-api.open-design.ai/api/v1/workspaces/current",
-  );
-  assert.equal(
-    context.calls[0].headers["cookie"],
-    "__Secure-better-auth.session_token=fake-session",
-  );
+  assert.equal(context.calls[0].url, "https://amr-api.open-design.ai/api/v1/workspaces/current");
+  assert.equal(context.calls[0].headers["cookie"], "__Secure-better-auth.session_token=fake-session");
   assert.equal(account.observed_at, new Date(NOW * 1000).toISOString());
 });
 
@@ -82,26 +69,18 @@ test("opendesign: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    opendesign.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(opendesign.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("opendesign: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({
       ...configured,
       responses: [json({ workspaceId: "workspace-fixture" }), response],
     });
     await assert.rejects(
       opendesign.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -109,17 +88,13 @@ test("opendesign: malformed payloads and HTTP errors are sanitized", async () =>
 test("opendesign: workspace header and second-request auth and rate limits", async () => {
   const context = fakeContext({ ...configured, responses: responses() });
   await opendesign.fetch(context);
-  assert.equal(
-    context.calls[1].headers["x-vela-workspace-id"],
-    "workspace-fixture",
-  );
+  assert.equal(context.calls[1].headers["x-vela-workspace-id"], "workspace-fixture");
   for (const status of [401, 403, 429]) {
     const ctx = fakeContext({
       ...configured,
       responses: [json({ workspaceId: "workspace-fixture" }), json({}, status)],
     });
-    if (status === 429)
-      await assert.rejects(opendesign.fetch(ctx), RateLimited);
+    if (status === 429) await assert.rejects(opendesign.fetch(ctx), RateLimited);
     else assert.equal((await opendesign.fetch(ctx))[0].error, "sign in");
   }
 });
@@ -142,12 +117,7 @@ test("opendesign: rejects workspace mismatch, duplicates, invalid amounts and un
       windows: [{ durationSeconds: 60, usedCredits: 1, limitCredits: 5 }],
     },
   ]) {
-    await assert.rejects(
-      opendesign.fetch(
-        fakeContext({ ...configured, responses: responses(body) }),
-      ),
-      HttpError,
-    );
+    await assert.rejects(opendesign.fetch(fakeContext({ ...configured, responses: responses(body) })), HttpError);
   }
   const [account] = await opendesign.fetch(
     fakeContext({

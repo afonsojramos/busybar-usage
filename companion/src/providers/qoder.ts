@@ -26,9 +26,15 @@ function quota(value: unknown) {
   return { used, total, remaining, percent };
 }
 
-function invalidCapture(): never { throw new NotConfigured("Qoder"); }
+function invalidCapture(): never {
+  throw new NotConfigured("Qoder");
+}
 function site(host: string): string {
-  const normalized = host.trim().replace(/^["']|["']$/g, "").toLowerCase().replace(/^\./, "");
+  const normalized = host
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .toLowerCase()
+    .replace(/^\./, "");
   const match = /^(?:www\.)?(qoder\.com(?:\.cn)?)(?::([0-9]+))?$/.exec(normalized);
   if (!match?.[1] || (match[2] && (Number(match[2]) < 1 || Number(match[2]) > 65535))) invalidCapture();
   return match[1];
@@ -38,7 +44,9 @@ function urlSite(value: string): string {
     const url = new URL(value);
     if (url.protocol !== "https:" && url.protocol !== "http:") invalidCapture();
     return site(url.host);
-  } catch { return invalidCapture(); }
+  } catch {
+    return invalidCapture();
+  }
 }
 function unquote(value: string): string {
   const text = value.trim();
@@ -57,7 +65,11 @@ function curlTokens(raw: string): string[] {
         index += next === "\r" ? 2 : 1;
         continue;
       }
-      if (next && /['"\\]/.test(next)) { token += next; index++; continue; }
+      if (next && /['"\\]/.test(next)) {
+        token += next;
+        index++;
+        continue;
+      }
       if (quote === '"') invalidCapture();
     }
     if (char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) {
@@ -72,11 +84,14 @@ function curlTokens(raw: string): string[] {
       invalidCapture();
     }
     if (quote !== null) {
-      if (char === quote) quote = null; else token += char;
+      if (char === quote) quote = null;
+      else token += char;
     } else if (char === "'" || char === '"') quote = char;
     else if (/[;|&<>]/.test(char)) invalidCapture();
-    else if (/\s/.test(char)) { if (token) tokens.push(token); token = ""; }
-    else token += char;
+    else if (/\s/.test(char)) {
+      if (token) tokens.push(token);
+      token = "";
+    } else token += char;
   }
   if (quote !== null) invalidCapture();
   if (token) tokens.push(token);
@@ -98,8 +113,14 @@ function manualSession(raw: string): { header: string; domain: string } {
     for (let index = command + 1; index < tokens.length; index++) {
       const token = tokens[index] ?? "";
       const lower = token.toLowerCase();
-      if (lower === "--config" || lower.startsWith("--config=") || lower.startsWith("--expand-") ||
-          lower === "--location-trusted" || (/^-[^-]/.test(token) && token.slice(1).includes("K"))) invalidCapture();
+      if (
+        lower === "--config" ||
+        lower.startsWith("--config=") ||
+        lower.startsWith("--expand-") ||
+        lower === "--location-trusted" ||
+        (/^-[^-]/.test(token) && token.slice(1).includes("K"))
+      )
+        invalidCapture();
       if (lower === "--url") {
         index++;
         targets.set(index, urlSite(tokens[index] ?? ""));
@@ -116,7 +137,10 @@ function manualSession(raw: string): { header: string; domain: string } {
       } else if (lower.startsWith("--header=")) headers.push(token.slice(9));
       else if (/^-[fsSL]*H/.test(token)) {
         let value = token.replace(/^-[fsSL]*H/, "");
-        if (!value) { index++; value = tokens[index] ?? ""; }
+        if (!value) {
+          index++;
+          value = tokens[index] ?? "";
+        }
         if (!value) invalidCapture();
         headers.push(value);
       } else if (lower === "--cookie" || lower === "-b") {
@@ -134,7 +158,10 @@ function manualSession(raw: string): { header: string; domain: string } {
     let requests = 0;
     for (const line of raw.split(/\r?\n/)) {
       const match = /^\s*([A-Za-z]+)\s+(\S+)(?:\s+HTTP\/\S+)?\s*$/.exec(line);
-      if (match && (/^(get|post|put|patch|delete|head|options|trace|connect)$/i.test(match[1] ?? "") || /HTTP\//i.test(line))) {
+      if (
+        match &&
+        (/^(get|post|put|patch|delete|head|options|trace|connect)$/i.test(match[1] ?? "") || /HTTP\//i.test(line))
+      ) {
         if (!/^(get|post|put|patch|delete|head|options)$/i.test(match[1] ?? "") || ++requests > 1) invalidCapture();
         const target = match[2] ?? "";
         if (!target.startsWith("/")) routes.push(urlSite(target));
@@ -160,13 +187,20 @@ function manualSession(raw: string): { header: string; domain: string } {
     const cookie = /^Cookie:\s*(.*)$/i.exec(header)?.[1];
     if (cookie !== undefined) cookies.push(unquote(cookie));
   }
-  if (!routes.length || routes.some((route) => route !== routes[0]) || cookies.length !== 1 || !cookies[0] ||
-      /[\r\n]/.test(cookies[0])) invalidCapture();
+  if (
+    !routes.length ||
+    routes.some((route) => route !== routes[0]) ||
+    cookies.length !== 1 ||
+    !cookies[0] ||
+    /[\r\n]/.test(cookies[0])
+  )
+    invalidCapture();
   return { header: cookies[0], domain: routes[0] ?? "qoder.com" };
 }
 
 export const qoder: Provider = {
-  id: "qoder", name: "Qoder",
+  id: "qoder",
+  name: "Qoder",
   async fetch(context) {
     const entry = await providerEntry(context, "qoder");
     if (entry.cookieSource === "off") throw new NotConfigured("Qoder");
@@ -178,14 +212,27 @@ export const qoder: Provider = {
       const session = saved ? manualSession(raw) : { header: raw, domain };
       const origin = `https://${session.domain}`;
       const now = context.now();
-      const base = { provider: "qoder", account: accountLabel(null), blocked: false,
-        observed_at: new Date(now * 1000).toISOString(), windows: [] };
+      const base = {
+        provider: "qoder",
+        account: accountLabel(null),
+        blocked: false,
+        observed_at: new Date(now * 1000).toISOString(),
+        windows: [],
+      };
       const response = await context.fetch(`${origin}/api/v2/me/usages/big_model_credits`, {
-        headers: { Cookie: session.header, Accept: "application/json, text/plain, */*",
-          "Accept-Language": "en-US,en;q=0.9", Origin: origin, Referer: `${origin}/account/usage`,
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-          "X-Requested-With": "XMLHttpRequest", "Bx-V": "2.5.35" },
-        signal: AbortSignal.timeout(30_000), redirect: "manual",
+        headers: {
+          Cookie: session.header,
+          Accept: "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          Origin: origin,
+          Referer: `${origin}/account/usage`,
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+          "X-Requested-With": "XMLHttpRequest",
+          "Bx-V": "2.5.35",
+        },
+        signal: AbortSignal.timeout(30_000),
+        redirect: "manual",
       });
       if (response.status === 401 || response.status === 403) {
         if (saved) return [{ ...base, error: "sign in" }];
@@ -195,7 +242,11 @@ export const qoder: Provider = {
       if (response.status === 429) throw new RateLimited("Qoder", now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError("Qoder", response.status);
       let root: unknown;
-      try { root = await response.json(); } catch { throw new HttpError("Qoder", response.status); }
+      try {
+        root = await response.json();
+      } catch {
+        throw new HttpError("Qoder", response.status);
+      }
       if (!isRecord(root)) throw new HttpError("Qoder", response.status);
       const first = quota(field(root, "totalQuota", "total_quota"));
       const sharedValue = field(root, "sharedQuota", "shared_quota");
@@ -206,15 +257,26 @@ export const qoder: Provider = {
       const total = number(first.total + (shared?.total ?? 0));
       const remaining = number(first.remaining + (shared?.remaining ?? 0));
       if (total === 0 && (used !== 0 || remaining !== 0)) throw new HttpError("Qoder", 200);
-      const percent = number((shared ? null : first.percent) ?? (total > 0 ? used / total * 100 : 100));
+      const percent = number((shared ? null : first.percent) ?? (total > 0 ? (used / total) * 100 : 100));
       const reset = field(root, "nextResetAt", "next_reset_at");
-      const resetsAt = typeof reset === "number" && Number.isFinite(reset)
-        ? reset / (reset > 10_000_000_000 ? 1000 : 1) : isoToSeconds(reset);
+      const resetsAt =
+        typeof reset === "number" && Number.isFinite(reset)
+          ? reset / (reset > 10_000_000_000 ? 1000 : 1)
+          : isoToSeconds(reset);
       const windows = [feedWindow(null, Math.max(0, Math.min(100, percent)), resetsAt, now, "credit")];
       return [{ ...base, blocked: windows.some((window) => (window.used_percent ?? 0) >= 100), windows }];
     }
-    if (rejected) return [{ provider: "qoder", account: accountLabel(null), blocked: false,
-      observed_at: new Date(context.now() * 1000).toISOString(), windows: [], error: "sign in" }];
+    if (rejected)
+      return [
+        {
+          provider: "qoder",
+          account: accountLabel(null),
+          blocked: false,
+          observed_at: new Date(context.now() * 1000).toISOString(),
+          windows: [],
+          error: "sign in",
+        },
+      ];
     throw new NotConfigured("Qoder");
   },
 };

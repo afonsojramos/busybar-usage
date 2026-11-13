@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vite-plus/test";
 import { chatbox } from "../src/providers/chatbox.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -42,10 +38,7 @@ test("chatbox: maps the CodexBar contract and sends the expected credential", as
     account.windows.map((w) => w.used_percent ?? w.value),
     [20, 13],
   );
-  assert.equal(
-    context.calls[0].url,
-    "https://api.chatboxai.app/api/license/detail/realtime",
-  );
+  assert.equal(context.calls[0].url, "https://api.chatboxai.app/api/license/detail/realtime");
   assert.equal(context.calls[0].headers["authorization"], "fake-key");
   assert.equal(account.observed_at, new Date(NOW * 1000).toISOString());
 });
@@ -70,23 +63,15 @@ test("chatbox: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    chatbox.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(chatbox.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("chatbox: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       chatbox.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -118,9 +103,7 @@ test("chatbox: expired plan, combined totals, reward fallback and image-only poo
   ];
   const expected = ["800 cr", "80 cr", "10 cr", "17", "0 / 0"];
   for (let i = 0; i < inputs.length; i++) {
-    const [account] = await chatbox.fetch(
-      fakeContext({ ...configured, responses: responses(inputs[i]) }),
-    );
+    const [account] = await chatbox.fetch(fakeContext({ ...configured, responses: responses(inputs[i]) }));
     assert.equal(account.windows[0].value, expected[i]);
     assert.equal(account.windows[0].resets_at, null);
   }
@@ -142,10 +125,7 @@ test("chatbox: duplicate plans, invalid counters and error envelopes fail", asyn
     { data: { unified_token_usage_details: "bad" } },
     { data: { aggregated_reward_details: [] } },
   ]) {
-    await assert.rejects(
-      chatbox.fetch(fakeContext({ ...configured, responses: responses(body) })),
-      HttpError,
-    );
+    await assert.rejects(chatbox.fetch(fakeContext({ ...configured, responses: responses(body) })), HttpError);
   }
 });
 
@@ -156,9 +136,7 @@ test("chatbox: reset must precede expiration and exhausted plan blocks", async (
       responses: responses({
         data: {
           ...fixture.data,
-          unified_token_usage_details: [
-            { type: "plan", token_usage: 1000, token_limit: 1000 },
-          ],
+          unified_token_usage_details: [{ type: "plan", token_usage: 1000, token_limit: 1000 }],
           token_next_refresh_time: "2028-01-01T00:00:00Z",
         },
       }),
@@ -181,9 +159,7 @@ test("chatbox: every request has a timeout and rejects redirects", async () => {
 });
 
 test("chatbox: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {

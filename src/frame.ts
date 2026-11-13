@@ -113,7 +113,18 @@ function windowElements(
     const value = fit(cased(window.value ?? "", style), WIDTH - nameX, style.measure, FONT);
     const room = WIDTH - style.measure(value, FONT) - nameX;
     const shortName = fit(name, room, style.measure, FONT);
-    const elements: Element[] = [{ id: `w${row}_value`, type: "text", x: WIDTH, y, align: "top_right", text: value, font: FONT, color: "#FFFFFFFF" }];
+    const elements: Element[] = [
+      {
+        id: `w${row}_value`,
+        type: "text",
+        x: WIDTH,
+        y,
+        align: "top_right",
+        text: value,
+        font: FONT,
+        color: "#FFFFFFFF",
+      },
+    ];
     if (style.measure(shortName, FONT) <= room) {
       elements.unshift({ id: `w${row}_name`, type: "text", x: nameX, y, text: shortName, font: FONT, color: GREY });
     }
@@ -166,7 +177,8 @@ function windowElements(
 export function accountFrame(account: Account, nowSeconds: number, style: TextStyle): Element[] {
   const windows = account.error === null ? account.windows.slice(0, ROW_Y.length) : [];
   const layout = columns(style, windows, nowSeconds);
-  const label = (text: string, font: "tiny" | "small") => fit(cased(text, style), layout.labelWidth, style.measure, font);
+  const label = (text: string, font: "tiny" | "small") =>
+    fit(cased(text, style), layout.labelWidth, style.measure, font);
   // A message in the window area; its last blank column may fall past the screen's edge.
   const notice = (text: string, color: string): Element => ({
     id: "w0_name",
@@ -211,5 +223,16 @@ export function accountFrame(account: Account, nowSeconds: number, style: TextSt
 
 /** A one-line message, such as when the hub cannot be reached. */
 export function messageFrame(text: string, style: TextStyle): Element[] {
-  return [{ id: "message", type: "text", x: WIDTH / 2, y: 8, align: "center", text: cased(text, style), font: "small", color: GREY }];
+  return [
+    {
+      id: "message",
+      type: "text",
+      x: WIDTH / 2,
+      y: 8,
+      align: "center",
+      text: cased(text, style),
+      font: "small",
+      color: GREY,
+    },
+  ];
 }

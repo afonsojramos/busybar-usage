@@ -67,14 +67,20 @@ function run(command: string, args: string[], options: RunOptions = {}): Promise
     child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
       if (stderr.length < MAX_OUTPUT) stderr += chunk;
     });
-    child.on("error", (error: NodeJS.ErrnoException) => finish(error.code === "ENOENT" ? null : { code: null, stdout, stderr }));
+    child.on("error", (error: NodeJS.ErrnoException) =>
+      finish(error.code === "ENOENT" ? null : { code: null, stdout, stderr }),
+    );
     child.on("close", (code) => finish({ code, stdout, stderr }));
     child.stdin?.on("error", () => {});
     child.stdin?.end(options.input ?? "");
   });
 }
 
-async function querySqlite(path: string, sql: string, params: SqliteValue[] = []): Promise<Record<string, unknown>[] | null> {
+async function querySqlite(
+  path: string,
+  sql: string,
+  params: SqliteValue[] = [],
+): Promise<Record<string, unknown>[] | null> {
   const dir = await mkdtemp(join(tmpdir(), "busybar-usage-"));
   try {
     const copy = join(dir, basename(path));
@@ -88,7 +94,10 @@ async function querySqlite(path: string, sql: string, params: SqliteValue[] = []
     for (const suffix of ["-wal", "-shm"]) await copyFile(path + suffix, copy + suffix).catch(() => {});
     const database = new DatabaseSync(copy, { readOnly: true });
     try {
-      return database.prepare(sql).all(...params).map((row) => ({ ...row }));
+      return database
+        .prepare(sql)
+        .all(...params)
+        .map((row) => ({ ...row }));
     } finally {
       database.close();
     }

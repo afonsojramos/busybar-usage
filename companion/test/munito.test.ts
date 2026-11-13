@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vite-plus/test";
 import { munito } from "../src/providers/munito.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -22,10 +18,7 @@ const fixture = {
   ],
 };
 const configured = { env: { MUNITO_API_KEY: "fake-key" }, files: {} };
-const responses = (body: unknown = fixture) => [
-  json(body),
-  json({ name: "Fixture org" }),
-];
+const responses = (body: unknown = fixture) => [json(body), json({ name: "Fixture org" })];
 
 test("munito: maps the CodexBar contract and sends the expected credential", async () => {
   const context = fakeContext({ ...configured, responses: responses() });
@@ -64,23 +57,15 @@ test("munito: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    munito.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(munito.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("munito: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       munito.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -108,9 +93,7 @@ test("munito: no-limit spend, unknown periods and stopped spending", async () =>
     account.windows.map((w) => w.value),
     ["$2.00", "$12.75"],
   );
-  const [empty] = await munito.fetch(
-    fakeContext({ ...configured, responses: responses({ periods: [] }) }),
-  );
+  const [empty] = await munito.fetch(fakeContext({ ...configured, responses: responses({ periods: [] }) }));
   assert.deepEqual(empty.windows, []);
   for (const period of [
     { period: "day", spent_usd: -1 },
@@ -142,10 +125,7 @@ test("munito: alias key and config key use the shared resolver", async () => {
   ]) {
     const context = fakeContext({ ...config, responses: responses() });
     await munito.fetch(context);
-    assert.match(
-      context.calls[0].headers.authorization,
-      /Bearer (alias|saved)/,
-    );
+    assert.match(context.calls[0].headers.authorization, /Bearer (alias|saved)/);
   }
 });
 
@@ -174,16 +154,13 @@ test("munito: optional enrichment tolerates refused and timed-out requests but p
       if (++requests === 2) throw error;
       return fetch(input, init);
     };
-    if (error.name === "AbortError")
-      await assert.rejects(munito.fetch(context), (e) => e === error);
+    if (error.name === "AbortError") await assert.rejects(munito.fetch(context), (e) => e === error);
     else assert.equal((await munito.fetch(context))[0].error, undefined);
   }
 });
 
 test("munito: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {

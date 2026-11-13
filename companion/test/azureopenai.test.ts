@@ -6,11 +6,11 @@ import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Adapted from CodexBar's azureopenai provider test responses.
 const payloads = [{ id: "cmpl-1", model: "gpt-4o-mini" }];
-const env = ({
-	AZURE_OPENAI_API_KEY: 'fixture-key',
-	AZURE_OPENAI_ENDPOINT: 'https://resource.openai.azure.com',
-	AZURE_OPENAI_DEPLOYMENT_NAME: 'chat-prod'
-});
+const env = {
+  AZURE_OPENAI_API_KEY: "fixture-key",
+  AZURE_OPENAI_ENDPOINT: "https://resource.openai.azure.com",
+  AZURE_OPENAI_DEPLOYMENT_NAME: "chat-prod",
+};
 
 test("azureopenai: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

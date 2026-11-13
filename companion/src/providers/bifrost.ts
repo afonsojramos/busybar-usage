@@ -1,4 +1,12 @@
-import { accountLabel, feedWindow, isoToSeconds, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
+import {
+  accountLabel,
+  feedWindow,
+  isoToSeconds,
+  isRecord,
+  valueWindow,
+  type FeedAccount,
+  type FeedWindow,
+} from "../feed.ts";
 import { apiKey, providerEntry } from "../keys.ts";
 import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
 
@@ -30,18 +38,22 @@ function privateHost(host: string): boolean {
   const parts = host.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
   const [a, b] = parts;
-  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 168) || (a === 169 && b === 254);
+  return (
+    a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)
+  );
 }
 
 function endpoint(raw: string | null, policy: "private" | "loopback" | "https" = "private"): URL {
   if (!raw) throw new NotConfigured(NAME);
   let url: URL;
-  try { url = new URL(raw.includes("://") ? raw : `https://${raw}`); }
-  catch { throw new NotConfigured(NAME); }
-  const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || url.hostname.startsWith('127.');
-  const http = url.protocol === "http:" && (policy === "private" ? privateHost(url.hostname)
-    : policy === "loopback" && loopback);
+  try {
+    url = new URL(raw.includes("://") ? raw : `https://${raw}`);
+  } catch {
+    throw new NotConfigured(NAME);
+  }
+  const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || url.hostname.startsWith("127.");
+  const http =
+    url.protocol === "http:" && (policy === "private" ? privateHost(url.hostname) : policy === "loopback" && loopback);
   if ((url.protocol !== "https:" && !http) || url.username || url.password) throw new NotConfigured(NAME);
   return url;
 }
@@ -53,13 +65,20 @@ async function request(context: Context, url: URL, key: string | null): Promise<
   if (response.status === 401 || response.status === 403) throw new SignIn();
   if (response.status === 429) throw new RateLimited(NAME, context.now() + retryAfterSeconds(response.headers, 300));
   if (!response.ok) throw new HttpError(NAME, response.status);
-  try { return await response.json(); }
-  catch { throw new HttpError(NAME, response.status); }
+  try {
+    return await response.json();
+  } catch {
+    throw new HttpError(NAME, response.status);
+  }
 }
 
 function money(value: number): string {
-  const compact = Math.abs(value) >= 1e6 ? `${(value / 1e6).toPrecision(3)}m`
-    : Math.abs(value) >= 1e4 ? `${(value / 1e3).toPrecision(3)}k` : value.toFixed(2);
+  const compact =
+    Math.abs(value) >= 1e6
+      ? `${(value / 1e6).toPrecision(3)}m`
+      : Math.abs(value) >= 1e4
+        ? `${(value / 1e3).toPrecision(3)}k`
+        : value.toFixed(2);
   return `$${compact}`.slice(0, 12);
 }
 
@@ -72,8 +91,12 @@ export const bifrost: Provider = {
     const entry = await providerEntry(context, ID);
     const now = context.now();
     const base: FeedAccount = {
-      provider: ID, provider_name: NAME, account: accountLabel(null),
-      blocked: false, observed_at: new Date(now * 1000).toISOString(), windows: [],
+      provider: ID,
+      provider_name: NAME,
+      account: accountLabel(null),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
     };
     try {
       const url = endpoint(text(context.env.BIFROST_BASE_URL) ?? text(entry.enterpriseHost));
@@ -88,8 +111,21 @@ export const bifrost: Provider = {
       const duration = (value: unknown): number | null => {
         const raw = text(value);
         if (!raw) return null;
-        const units: Record<string, number> = { Y: 31536000, Q: 7776000, M: 2592000, w: 604800,
-          d: 86400, h: 3600, m: 60, s: 1, ms: .001, us: .000001, "µs": .000001, "μs": .000001, ns: 1e-9 };
+        const units: Record<string, number> = {
+          Y: 31536000,
+          Q: 7776000,
+          M: 2592000,
+          w: 604800,
+          d: 86400,
+          h: 3600,
+          m: 60,
+          s: 1,
+          ms: 0.001,
+          us: 0.000001,
+          µs: 0.000001,
+          μs: 0.000001,
+          ns: 1e-9,
+        };
         const extended = raw.match(/^(\d+(?:\.\d+)?)([dwMQY])$/);
         if (extended) return Number(extended[1]) * units[extended[2]];
         const parts = [...raw.matchAll(/(\d+(?:\.\d*)?|\.\d+)(ns|us|µs|μs|ms|s|m|h)/g)];
@@ -102,8 +138,10 @@ export const bifrost: Provider = {
         const calendar = /[dwMQY]$/.test(text(raw) ?? "");
         const last = isoToSeconds(lastReset);
         // Calendar alignment is absent from this endpoint, so do not invent reset dates.
-        const reset = !calendar && seconds !== null && last !== null
-          ? last + (Math.max(0, Math.floor((now - last) / seconds)) + 1) * seconds : null;
+        const reset =
+          !calendar && seconds !== null && last !== null
+            ? last + (Math.max(0, Math.floor((now - last) / seconds)) + 1) * seconds
+            : null;
         const minutes = !calendar && seconds !== null && seconds >= 60 ? Math.floor(seconds / 60) : null;
         const name = text(raw)?.slice(0, 6) ?? "quota";
         return { seconds, reset, minutes, name };
@@ -119,7 +157,8 @@ export const bifrost: Provider = {
           const override = number(budget.override_amount);
           const cycles = number(budget.override_cycles_remaining);
           if (!Number.isInteger(cycles)) throw new HttpError(NAME, 200);
-          const active = override > 0 && (budget.override_mode === "forever" || (budget.override_mode === "cycles" && cycles > 0));
+          const active =
+            override > 0 && (budget.override_mode === "forever" || (budget.override_mode === "cycles" && cycles > 0));
           const limit = number(budget.max_limit) + (active ? override : 0);
           if (!Number.isFinite(limit)) throw new HttpError(NAME, 200);
           const used = number(budget.current_usage);
@@ -129,7 +168,13 @@ export const bifrost: Provider = {
             spendPeriod = time.seconds ?? Infinity;
           }
           if (limit > 0) {
-            const window = feedWindow(time.minutes, used / limit * 100, time.reset, now, time.minutes === null ? time.name : undefined);
+            const window = feedWindow(
+              time.minutes,
+              (used / limit) * 100,
+              time.reset,
+              now,
+              time.minutes === null ? time.name : undefined,
+            );
             blocked ||= (window.used_percent ?? 0) >= 100;
             lanes.push({ window, seconds: time.seconds ?? Infinity, scope: scopeIndex, budget: true });
           }
@@ -142,7 +187,13 @@ export const bifrost: Provider = {
             if (max <= 0) continue;
             const used = number(limit[dimension + "_current_usage"]);
             const time = timing(limit[dimension + "_reset_duration"], limit[dimension + "_last_reset"]);
-            const window = feedWindow(time.minutes, used / max * 100, time.reset, now, time.minutes === null ? dimension.slice(0, 4) : undefined);
+            const window = feedWindow(
+              time.minutes,
+              (used / max) * 100,
+              time.reset,
+              now,
+              time.minutes === null ? dimension.slice(0, 4) : undefined,
+            );
             blocked ||= (window.used_percent ?? 0) >= 100;
             lanes.push({ window, seconds: time.seconds ?? Infinity, scope: scopeIndex, budget: false });
           }
@@ -153,7 +204,6 @@ export const bifrost: Provider = {
       windows.sort((a, b) => (a.minutes ?? Infinity) - (b.minutes ?? Infinity));
       if (windows.length < 2 && spend !== null) windows.push(valueWindow("spend", money(spend)));
       return [{ ...base, windows, blocked }];
-
     } catch (error) {
       if (error instanceof SignIn) return [{ ...base, error: "sign in" }];
       throw error;

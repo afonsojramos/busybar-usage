@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vite-plus/test";
 import { commandcode } from "../src/providers/commandcode.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -17,10 +13,7 @@ const fixture = {
   },
 };
 const configured = { env: { COMMAND_CODE_API_KEY: "fake-key" }, files: {} };
-const responses = (body: unknown = fixture) => [
-  json(body),
-  json({ success: true, data: null }),
-];
+const responses = (body: unknown = fixture) => [json(body), json({ success: true, data: null })];
 
 test("commandcode: maps the CodexBar contract and sends the expected credential", async () => {
   const context = fakeContext({ ...configured, responses: responses() });
@@ -34,10 +27,7 @@ test("commandcode: maps the CodexBar contract and sends the expected credential"
     account.windows.map((w) => w.used_percent ?? w.value),
     [20, 15],
   );
-  assert.equal(
-    context.calls[0].url,
-    "https://api.commandcode.ai/alpha/billing/credits",
-  );
+  assert.equal(context.calls[0].url, "https://api.commandcode.ai/alpha/billing/credits");
   assert.equal(context.calls[0].headers["authorization"], "Bearer fake-key");
   assert.equal(account.observed_at, new Date(NOW * 1000).toISOString());
 });
@@ -62,23 +52,15 @@ test("commandcode: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    commandcode.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(commandcode.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("commandcode: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       commandcode.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -102,23 +84,14 @@ test("commandcode: cookie route and subscription plan fallback", async () => {
     ],
   });
   const [account] = await commandcode.fetch(context);
-  assert.equal(
-    context.calls[0].url,
-    "https://api.commandcode.ai/internal/billing/credits",
-  );
-  assert.equal(
-    context.calls[0].headers.cookie,
-    "__Secure-commandcode_prod_.session_token=fake-session",
-  );
+  assert.equal(context.calls[0].url, "https://api.commandcode.ai/internal/billing/credits");
+  assert.equal(context.calls[0].headers.cookie, "__Secure-commandcode_prod_.session_token=fake-session");
   assert.equal(context.calls[0].headers.origin, "https://commandcode.ai");
   assert.deepEqual(
     account.windows.map((w) => w.used_percent ?? w.value),
     [80, "$5.00"],
   );
-  assert.equal(
-    account.windows[0].resets_at,
-    Date.parse("2030-01-01T00:00:00Z") / 1000,
-  );
+  assert.equal(account.windows[0].resets_at, Date.parse("2030-01-01T00:00:00Z") / 1000);
 });
 
 test("commandcode: selected saved session takes precedence over API key", async () => {
@@ -175,19 +148,11 @@ test("commandcode: nested windows, numeric dates, default usage and dropped mont
 });
 
 test("commandcode: missing grant keeps the remaining balance despite failed enrichment", async () => {
-  for (const optional of [
-    json({}, 401),
-    json({}, 429),
-    json({}, 500),
-    new Response("not-json"),
-  ]) {
+  for (const optional of [json({}, 401), json({}, 429), json({}, 500), new Response("not-json")]) {
     const [account] = await commandcode.fetch(
       fakeContext({
         ...configured,
-        responses: [
-          json({ credits: { monthlyCredits: "8.5", purchasedCredits: 2 } }),
-          optional,
-        ],
+        responses: [json({ credits: { monthlyCredits: "8.5", purchasedCredits: 2 } }), optional],
       }),
     );
     assert.deepEqual(
@@ -233,16 +198,13 @@ test("commandcode: optional enrichment tolerates refused and timed-out requests 
       if (++requests === 2) throw error;
       return fetch(input, init);
     };
-    if (error.name === "AbortError")
-      await assert.rejects(commandcode.fetch(context), (e) => e === error);
+    if (error.name === "AbortError") await assert.rejects(commandcode.fetch(context), (e) => e === error);
     else assert.equal((await commandcode.fetch(context))[0].error, undefined);
   }
 });
 
 test("commandcode: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {

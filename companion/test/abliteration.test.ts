@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vite-plus/test";
 import { abliteration } from "../src/providers/abliteration.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -50,23 +46,15 @@ test("abliteration: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    abliteration.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(abliteration.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("abliteration: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       abliteration.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -115,9 +103,7 @@ test("abliteration: every request has a timeout and rejects redirects", async ()
 });
 
 test("abliteration: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {

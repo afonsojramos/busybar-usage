@@ -11,8 +11,12 @@ test("an environment variable wins, in the order given", async () => {
 test("the companion's config comes next", async () => {
   const context = fakeContext({
     files: {
-      "/home/test/.config/busybar-usage/config.json": JSON.stringify({ providers: { demo: { apiKey: "from-companion" } } }),
-      "/home/test/.config/codexbar/config.json": JSON.stringify({ providers: [{ id: "demo", apiKey: "from-codexbar" }] }),
+      "/home/test/.config/busybar-usage/config.json": JSON.stringify({
+        providers: { demo: { apiKey: "from-companion" } },
+      }),
+      "/home/test/.config/codexbar/config.json": JSON.stringify({
+        providers: [{ id: "demo", apiKey: "from-codexbar" }],
+      }),
     },
   });
   assert.equal(await apiKey(context, "demo", ["DEMO_KEY"]), "from-companion");
@@ -20,7 +24,9 @@ test("the companion's config comes next", async () => {
 
 test("reads CodexBar's config, including its selected token account", async () => {
   const direct = fakeContext({
-    files: { "/home/test/.codexbar/config.json": JSON.stringify({ providers: [{ id: "demo", apiKey: "legacy-path" }] }) },
+    files: {
+      "/home/test/.codexbar/config.json": JSON.stringify({ providers: [{ id: "demo", apiKey: "legacy-path" }] }),
+    },
   });
   assert.equal(await apiKey(direct, "demo", []), "legacy-path");
 
@@ -28,7 +34,13 @@ test("reads CodexBar's config, including its selected token account", async () =
     env: { XDG_CONFIG_HOME: "/xdg" },
     files: {
       "/xdg/codexbar/config.json": JSON.stringify({
-        providers: [{ id: "demo", apiKey: null, tokenAccounts: { activeIndex: 1, accounts: [{ token: "first" }, { token: "second" }] } }],
+        providers: [
+          {
+            id: "demo",
+            apiKey: null,
+            tokenAccounts: { activeIndex: 1, accounts: [{ token: "first" }, { token: "second" }] },
+          },
+        ],
       }),
     },
   });

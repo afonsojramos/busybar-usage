@@ -15,7 +15,9 @@ import {
   retryAfterSeconds,
   isProviderHost,
   type Context,
-  type Provider, type RequestOptions } from "./types.ts";
+  type Provider,
+  type RequestOptions,
+} from "./types.ts";
 
 const ID = "chutes";
 

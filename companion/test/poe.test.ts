@@ -6,7 +6,7 @@ import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Adapted from CodexBar's poe provider test responses.
 const payloads = [{ current_point_balance: 1500 }, { data: [], next_cursor: null }];
-const env = ({ POE_API_KEY: 'fixture-key' });
+const env = { POE_API_KEY: "fixture-key" };
 
 test("poe: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

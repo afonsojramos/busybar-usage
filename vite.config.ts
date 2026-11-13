@@ -22,6 +22,10 @@ export default defineConfig({
       },
     ],
   },
+  fmt: {
+    printWidth: 120,
+    ignorePatterns: ["dist/**", "companion/test/fixtures/**"],
+  },
   test: {
     include: ["test/**/*.test.ts", "companion/test/**/*.test.ts"],
   },

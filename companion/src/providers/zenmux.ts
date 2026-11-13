@@ -8,7 +8,15 @@ import {
   type FeedWindow,
 } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider, type RequestOptions } from "./types.ts";
+import {
+  HttpError,
+  NotConfigured,
+  RateLimited,
+  retryAfterSeconds,
+  type Context,
+  type Provider,
+  type RequestOptions,
+} from "./types.ts";
 
 const ID = "zenmux";
 

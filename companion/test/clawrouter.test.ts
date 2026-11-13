@@ -12,7 +12,9 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function fixture(name = "usage"): Record<string, unknown> {
-  const value: unknown = JSON.parse(readFileSync(new URL(`./fixtures/clawrouter/${name}.json`, import.meta.url), "utf8"));
+  const value: unknown = JSON.parse(
+    readFileSync(new URL(`./fixtures/clawrouter/${name}.json`, import.meta.url), "utf8"),
+  );
   return record(value);
 }
 
@@ -88,19 +90,32 @@ test("clawrouter reads the CodexBar monthly fixture", async () => {
   const context = fakeContext({ env, responses: [json(fixture())] });
   context.now = () => Date.parse("2026-07-15T00:00:00Z") / 1000;
   const [account] = await clawrouter.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.minutes, w.used_percent, w.value]),
-    [["30d", 43200, 0, undefined], ["spend", null, null, "$0.01"]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.minutes, w.used_percent, w.value]),
+    [
+      ["30d", 43200, 0, undefined],
+      ["spend", null, null, "$0.01"],
+    ],
+  );
   assert.equal(account.windows[0].resets_at, Date.parse("2026-08-01T00:00:00Z") / 1000);
   assert.equal(context.calls[0].url, "https://gateway.example/prefix/v1/usage");
   assert.equal(context.calls[0].headers.authorization, "Bearer fake-key");
 });
 
 test("clawrouter supports hosted defaults, config keys and unmetered policies", async () => {
-  const context = fakeContext({ files: { "/home/test/.config/busybar-usage/config.json": JSON.stringify({
-    providers: { clawrouter: { apiKey: "fake-key" } },
-  }) }, responses: [json(fixture("unmetered"))] });
+  const context = fakeContext({
+    files: {
+      "/home/test/.config/busybar-usage/config.json": JSON.stringify({
+        providers: { clawrouter: { apiKey: "fake-key" } },
+      }),
+    },
+    responses: [json(fixture("unmetered"))],
+  });
   const [account] = await clawrouter.fetch(context);
-  assert.deepEqual(account.windows.map((w) => w.value), ["$1.25"]);
+  assert.deepEqual(
+    account.windows.map((w) => w.value),
+    ["$1.25"],
+  );
   assert.equal(context.calls[0].url, "https://clawrouter.openclaw.ai/v1/usage");
 });
 

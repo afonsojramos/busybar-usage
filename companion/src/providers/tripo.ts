@@ -1,19 +1,6 @@
-import {
-  accountLabel,
-  finiteNumber,
-  isRecord,
-  valueWindow,
-  type FeedAccount,
-  type FeedWindow,
-} from "../feed.ts";
+import { accountLabel, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-  retryAfterSeconds,
-  type Provider,
-} from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const ID = "tripo";
 const NAME = "Tripo";
@@ -21,11 +8,7 @@ const fail = (): never => {
   throw new HttpError(NAME, 200);
 };
 function number(value: unknown, strings = true, negative = false): number {
-  const parsed = strings
-    ? finiteNumber(value)
-    : typeof value === "number" && Number.isFinite(value)
-      ? value
-      : null;
+  const parsed = strings ? finiteNumber(value) : typeof value === "number" && Number.isFinite(value) ? value : null;
   if (parsed === null || (!negative && parsed < 0)) return fail();
   return parsed;
 }
@@ -53,22 +36,14 @@ export const tripo: Provider = {
     const headers: Record<string, string> = { Accept: "application/json" };
     if (!key) throw new NotConfigured(NAME);
     headers.Authorization = `Bearer ${key}`;
-    const get = async (
-      url: string,
-      additions: Record<string, string> = {},
-    ): Promise<unknown> => {
+    const get = async (url: string, additions: Record<string, string> = {}): Promise<unknown> => {
       const response = await context.fetch(url, {
         headers: { ...headers, ...additions },
         redirect: "error",
         signal: AbortSignal.timeout(30_000),
       });
-      if (response.status === 401 || response.status === 403)
-        throw new SignIn();
-      if (response.status === 429)
-        throw new RateLimited(
-          NAME,
-          now + retryAfterSeconds(response.headers, 300),
-        );
+      if (response.status === 401 || response.status === 403) throw new SignIn();
+      if (response.status === 429) throw new RateLimited(NAME, now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError(NAME, response.status);
       try {
         return await response.json();
@@ -83,16 +58,12 @@ export const tripo: Provider = {
       if (body.code !== 0 || !isRecord(body.data)) return fail();
       const balance = number(body.data.balance, false);
       const frozen = number(body.data.frozen, false);
-      windows.push(
-        valueWindow("Balance", compact(balance) + " cr"),
-        valueWindow("Reserved", compact(frozen) + " cr"),
-      );
+      windows.push(valueWindow("Balance", compact(balance) + " cr"), valueWindow("Reserved", compact(frozen) + " cr"));
       base.blocked = balance === 0;
       return [
         {
           ...base,
-          blocked:
-            base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
+          blocked: base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
           windows,
         },
       ];

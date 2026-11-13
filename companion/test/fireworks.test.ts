@@ -6,10 +6,10 @@ import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Adapted from CodexBar's fireworks provider test responses.
 const payloads = [{ lineItems: [{ totalCost: { units: "62", nanos: 990000000, currencyCode: "USD" } }] }];
-const env = ({
-	FIREWORKS_API_KEY: 'fixture-key',
-	FIREWORKS_ACCOUNT_SLUG: 'test-account'
-});
+const env = {
+  FIREWORKS_API_KEY: "fixture-key",
+  FIREWORKS_ACCOUNT_SLUG: "test-account",
+};
 
 test("fireworks: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

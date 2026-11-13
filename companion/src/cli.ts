@@ -45,8 +45,12 @@ function options() {
     process.exit(0);
   }
   const interval = Number(values.interval);
-  if (!Number.isInteger(interval) || interval < 30) throw new Error("--interval must be a whole number of seconds, at least 30");
-  const wanted = values.providers?.split(",").map((id) => id.trim()).filter(Boolean);
+  if (!Number.isInteger(interval) || interval < 30)
+    throw new Error("--interval must be a whole number of seconds, at least 30");
+  const wanted = values.providers
+    ?.split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   const unknown = wanted?.filter((id) => !providers.some((provider) => provider.id === id)) ?? [];
   if (unknown.length > 0) throw new Error(`unknown provider: ${unknown.join(", ")}`);
   return {

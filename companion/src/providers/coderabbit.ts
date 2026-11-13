@@ -13,11 +13,16 @@ export const coderabbit: Provider = {
     });
     if (!result) throw new NotConfigured("CodeRabbit");
     const base: FeedAccount = {
-      provider: "coderabbit", account: accountLabel(null), blocked: false,
-      observed_at: new Date(context.now() * 1000).toISOString(), windows: [],
+      provider: "coderabbit",
+      account: accountLabel(null),
+      blocked: false,
+      observed_at: new Date(context.now() * 1000).toISOString(),
+      windows: [],
     };
     const text = `${result.stdout}\n${result.stderr}`.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
-    if (/not authenticated|please log in|auth login|authentication required|unauthorized|no session found/i.test(text)) {
+    if (
+      /not authenticated|please log in|auth login|authentication required|unauthorized|no session found/i.test(text)
+    ) {
       return [{ ...base, error: "sign in" }];
     }
     if (result.code !== 0) throw new HttpError("CodeRabbit", 502);
@@ -33,7 +38,13 @@ export const coderabbit: Provider = {
     if (!validReviews && !fields.has("usage billing") && !fields.has("period resets")) {
       throw new HttpError("CodeRabbit", 200);
     }
-    if (validReviews) base.windows.push(valueWindow("reviews", (Number(reviews) < 1e9 ? Number(reviews).toLocaleString("en-US") : Number(reviews).toExponential(1))));
+    if (validReviews)
+      base.windows.push(
+        valueWindow(
+          "reviews",
+          Number(reviews) < 1e9 ? Number(reviews).toLocaleString("en-US") : Number(reviews).toExponential(1),
+        ),
+      );
     return [base];
   },
 };

@@ -88,8 +88,17 @@ test("asks a provider with a minimum interval at most that often", async () => {
 
 test("a hanging provider does not hold up the others, and is not started twice", async () => {
   let starts = 0;
-  const hanging: Provider = { id: "slow", name: "Slow", fetch: () => { starts += 1; return new Promise(() => {}); } };
-  const collector = new Collector([hanging, scripted([[account(7)], [account(8)]])], fakeContext({}), () => {}, { waitMs: 20 });
+  const hanging: Provider = {
+    id: "slow",
+    name: "Slow",
+    fetch: () => {
+      starts += 1;
+      return new Promise(() => {});
+    },
+  };
+  const collector = new Collector([hanging, scripted([[account(7)], [account(8)]])], fakeContext({}), () => {}, {
+    waitMs: 20,
+  });
   const feed = await collector.collect();
   assert.equal(feed.accounts.length, 1);
   await collector.collect();
@@ -98,7 +107,14 @@ test("a hanging provider does not hold up the others, and is not started twice",
 
 test("a slow provider's numbers arrive with a later collection", async () => {
   let release: (accounts: FeedAccount[]) => void = () => {};
-  const slow: Provider = { id: "test", name: "Test", fetch: () => new Promise((resolve) => { release = resolve; }) };
+  const slow: Provider = {
+    id: "test",
+    name: "Test",
+    fetch: () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  };
   const collector = new Collector([slow], fakeContext({}), () => {}, { waitMs: 20 });
   assert.equal((await collector.collect()).accounts.length, 0);
   release([account(3)]);
@@ -150,7 +166,11 @@ test("an attempt still running after 10 minutes is ignored, and the minimum inte
 });
 
 test("with no wait limit, a collection waits for every provider", async () => {
-  const slow: Provider = { id: "test", name: "Test", fetch: () => new Promise((resolve) => setTimeout(() => resolve([account(4)]), 30)) };
+  const slow: Provider = {
+    id: "test",
+    name: "Test",
+    fetch: () => new Promise((resolve) => setTimeout(() => resolve([account(4)]), 30)),
+  };
   const collector = new Collector([slow], fakeContext({}), () => {}, { waitMs: Infinity });
   assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 4);
 });
@@ -188,7 +208,10 @@ test("a failed push does not quote the bar's password", async () => {
   const { port } = server.address() as AddressInfo;
   try {
     await assert.rejects(
-      pushFeed({ generated_at: "2026-11-13T00:00:00Z", accounts: [] }, { host: `127.0.0.1:${port}`, password: "secret\u0000value" }),
+      pushFeed(
+        { generated_at: "2026-11-13T00:00:00Z", accounts: [] },
+        { host: `127.0.0.1:${port}`, password: "secret\u0000value" },
+      ),
       (error: Error) => !error.message.includes("secret"),
     );
   } finally {

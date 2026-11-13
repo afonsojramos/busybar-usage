@@ -57,23 +57,30 @@ function cacheFor(context: Context): Cache {
 }
 
 async function optional<T>(work: () => Promise<T>): Promise<T | null> {
-  try { return await work(); } catch { return null; }
+  try {
+    return await work();
+  } catch {
+    return null;
+  }
 }
 
 function matches(host: string, domains: string[]): boolean {
   const lower = host.toLowerCase();
   return domains.some((domain) => {
     const target = domain.toLowerCase().replace(/^\./, "");
-    return lower.startsWith(".")
-      ? target === lower.slice(1) || target.endsWith(lower)
-      : target === lower;
+    return lower.startsWith(".") ? target === lower.slice(1) || target.endsWith(lower) : target === lower;
   });
 }
 
 function header(cookies: Cookie[], domains: string[], required: string[], now: number): string | null {
-  const selected = cookies.filter((cookie) => matches(cookie.host, domains) &&
-    Number.isFinite(cookie.expires) && (cookie.expires === 0 || cookie.expires > now) &&
-    /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(cookie.name) && !/[\x00-\x20\x7f;]/.test(cookie.value));
+  const selected = cookies.filter(
+    (cookie) =>
+      matches(cookie.host, domains) &&
+      Number.isFinite(cookie.expires) &&
+      (cookie.expires === 0 || cookie.expires > now) &&
+      /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(cookie.name) &&
+      !/[\x00-\x20\x7f;]/.test(cookie.value),
+  );
   if (!selected.length || !required.every((name) => selected.some((cookie) => cookie.name === name))) return null;
   return selected.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
 }
@@ -81,7 +88,9 @@ function header(cookies: Cookie[], domains: string[], required: string[], now: n
 async function chromium(context: Context, root: string, identity: string, domains: string[], required: string[]) {
   const entries = await optional(() => context.listDir(root));
   if (!entries) return null;
-  const profiles = entries.filter((name) => name === "Default" || /^Profile \d+$/.test(name) || /^user-[^/]+$/.test(name)).sort();
+  const profiles = entries
+    .filter((name) => name === "Default" || /^Profile \d+$/.test(name) || /^user-[^/]+$/.test(name))
+    .sort();
   // Opera and some Chromium derivatives keep their store directly in the root.
   profiles.push("");
   const keys = cacheFor(context).keys;
@@ -96,16 +105,22 @@ async function chromium(context: Context, root: string, identity: string, domain
       const meta = await optional(() => context.querySqlite(db, versionSql));
       const version = Number(meta?.[0]?.value ?? 0);
       for (const row of rows) {
-        if (typeof row.host_key !== "string" || typeof row.name !== "string" || !matches(row.host_key, domains)) continue;
+        if (typeof row.host_key !== "string" || typeof row.name !== "string" || !matches(row.host_key, domains))
+          continue;
         let value = typeof row.value === "string" ? row.value : "";
         const encrypted = row.encrypted_value;
         if (encrypted instanceof Uint8Array && encrypted.length) {
           // Linux v11 requires Secret Service; v20/app-bound encryption is unsupported too.
           if (Buffer.from(encrypted.subarray(0, 3)).toString() !== "v10") continue;
           if (key === undefined) {
-            const password = context.platform === "linux" ? "peanuts" :
-              await optional(() => context.readKeychain(`${identity} Safe Storage`, identity));
-            key = password === null ? null : pbkdf2Sync(password, "saltysalt", context.platform === "linux" ? 1 : 1003, 16, "sha1");
+            const password =
+              context.platform === "linux"
+                ? "peanuts"
+                : await optional(() => context.readKeychain(`${identity} Safe Storage`, identity));
+            key =
+              password === null
+                ? null
+                : pbkdf2Sync(password, "saltysalt", context.platform === "linux" ? 1 : 1003, 16, "sha1");
             keys.set(identity, key);
           }
           if (!key) continue;
@@ -113,16 +128,26 @@ async function chromium(context: Context, root: string, identity: string, domain
             const decipher = createDecipheriv("aes-128-cbc", key, Buffer.alloc(16, 32));
             let plain = Buffer.concat([decipher.update(encrypted.subarray(3)), decipher.final()]);
             if (version >= 24) {
-              if (plain.length < 32 || !plain.subarray(0, 32).equals(createHash("sha256").update(row.host_key).digest())) continue;
+              if (
+                plain.length < 32 ||
+                !plain.subarray(0, 32).equals(createHash("sha256").update(row.host_key).digest())
+              )
+                continue;
               plain = plain.subarray(32);
             }
             value = new TextDecoder("utf-8", { fatal: true }).decode(plain);
-          } catch { continue; }
+          } catch {
+            continue;
+          }
         } else if (typeof row.value !== "string") continue;
         const expires = Number(row.expires_utc);
-        const cookie = { host: row.host_key, name: row.name, value,
+        const cookie = {
+          host: row.host_key,
+          name: row.name,
+          value,
           expires: expires === 0 ? 0 : expires / 1e6 - chromiumEpoch,
-          path: typeof row.path === "string" ? row.path : "/" };
+          path: typeof row.path === "string" ? row.path : "/",
+        };
         const id = `${cookie.host}\n${cookie.path}\n${cookie.name}`;
         const existing = merged.get(id);
         if (!existing || cookie.expires > existing.expires) merged.set(id, cookie);
@@ -152,8 +177,13 @@ async function firefox(context: Context, root: string, domains: string[], requir
     const cookies: Cookie[] = [];
     for (const row of rows ?? []) {
       if (typeof row.host !== "string" || typeof row.name !== "string" || typeof row.value !== "string") continue;
-      cookies.push({ host: row.host, name: row.name, value: row.value, expires: Number(row.expiry),
-        path: typeof row.path === "string" ? row.path : "/" });
+      cookies.push({
+        host: row.host,
+        name: row.name,
+        value: row.value,
+        expires: Number(row.expiry),
+        path: typeof row.path === "string" ? row.path : "/",
+      });
     }
     const result = header(cookies, domains, required, context.now());
     if (result) return result;
@@ -188,7 +218,10 @@ function safari(bytes: Uint8Array): Cookie[] {
         const end = record.indexOf(0, position);
         return end < 0 ? null : record.toString("utf8", position, end);
       };
-      const host = stringAt(16), name = stringAt(20), path = stringAt(24), value = stringAt(28);
+      const host = stringAt(16),
+        name = stringAt(20),
+        path = stringAt(24),
+        value = stringAt(28);
       if (host === null || name === null || path === null || value === null) continue;
       cookies.push({ host, name, path, value, expires: record.readDoubleLE(40) + 978307200 });
     }
@@ -197,7 +230,11 @@ function safari(bytes: Uint8Array): Cookie[] {
 }
 
 /** Returns the first complete browser-profile session, without combining accounts across profiles. */
-export async function browserCookieHeader(context: Context, domains: string[], required: string[]): Promise<string | null> {
+export async function browserCookieHeader(
+  context: Context,
+  domains: string[],
+  required: string[],
+): Promise<string | null> {
   if (!domains.length || (context.platform !== "darwin" && context.platform !== "linux")) return null;
   const cache = cacheFor(context).headers;
   const id = `${domains.join(",")}|${required.join(",")}`;
@@ -211,18 +248,25 @@ export async function browserCookieHeader(context: Context, domains: string[], r
 async function readBrowsers(context: Context, domains: string[], required: string[]): Promise<string | null> {
   for (const [mac, linux, identity] of browsers) {
     if (context.platform === "linux" && !linux) continue;
-    const root = context.platform === "darwin" ? `${context.home}/Library/Application Support/${mac}` :
-      `${context.env.XDG_CONFIG_HOME || `${context.home}/.config`}/${linux}`;
+    const root =
+      context.platform === "darwin"
+        ? `${context.home}/Library/Application Support/${mac}`
+        : `${context.env.XDG_CONFIG_HOME || `${context.home}/.config`}/${linux}`;
     const result = await optional(() => chromium(context, root, identity, domains, required));
     if (result) return result;
   }
   for (const folder of context.platform === "darwin" ? ["Firefox", "Zen", "Floorp", "LibreWolf"] : []) {
-    const result = await optional(() => firefox(context, `${context.home}/Library/Application Support/${folder}`, domains, required));
+    const result = await optional(() =>
+      firefox(context, `${context.home}/Library/Application Support/${folder}`, domains, required),
+    );
     if (result) return result;
   }
-  if (context.platform === "linux") return optional(() => firefox(context, `${context.home}/.mozilla/firefox`, domains, required));
-  for (const path of ["Library/Cookies/Cookies.binarycookies",
-    "Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"]) {
+  if (context.platform === "linux")
+    return optional(() => firefox(context, `${context.home}/.mozilla/firefox`, domains, required));
+  for (const path of [
+    "Library/Cookies/Cookies.binarycookies",
+    "Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies",
+  ]) {
     const result = await optional(async () => {
       const bytes = await context.readFileBytes(`${context.home}/${path}`);
       return bytes ? header(safari(bytes), domains, required, context.now()) : null;

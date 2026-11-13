@@ -3,8 +3,10 @@ import { cookieHeader } from "../cookies.ts";
 import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const SESSION_NAMES = [
-  "__Secure-authjs.session-token", "authjs.session-token",
-  "__Secure-next-auth.session-token", "next-auth.session-token",
+  "__Secure-authjs.session-token",
+  "authjs.session-token",
+  "__Secure-next-auth.session-token",
+  "next-auth.session-token",
 ];
 
 function sessionCookies(raw: string): string[] {
@@ -21,14 +23,18 @@ function sessionCookies(raw: string): string[] {
   for (const name of SESSION_NAMES) {
     const direct = pairs.get(name.toLowerCase());
     if (direct) return [`${direct.name}=${direct.value}`];
-    const chunks = [...pairs.entries()].flatMap(([key, pair]) => {
-      if (!key.startsWith(`${name.toLowerCase()}.`)) return [];
-      const suffix = key.slice(name.length + 1);
-      const index = Number(suffix);
-      return /^\d+$/.test(suffix) && Number.isSafeInteger(index) ? [{ index, ...pair }] : [];
-    }).sort((a, b) => a.index - b.index);
+    const chunks = [...pairs.entries()]
+      .flatMap(([key, pair]) => {
+        if (!key.startsWith(`${name.toLowerCase()}.`)) return [];
+        const suffix = key.slice(name.length + 1);
+        const index = Number(suffix);
+        return /^\d+$/.test(suffix) && Number.isSafeInteger(index) ? [{ index, ...pair }] : [];
+      })
+      .sort((a, b) => a.index - b.index);
     if (chunks.length && chunks.every((chunk, index) => chunk.index === index)) {
-      return [`${chunks[0].name.slice(0, chunks[0].name.lastIndexOf("."))}=${chunks.map((chunk) => chunk.value).join("")}`];
+      return [
+        `${chunks[0].name.slice(0, chunks[0].name.lastIndexOf("."))}=${chunks.map((chunk) => chunk.value).join("")}`,
+      ];
     }
   }
   return [];
@@ -63,23 +69,38 @@ function parseUsage(root: unknown, now: number): { windows: FeedWindow[]; exhaus
   pools.promotional = Math.max(0, pools.promotional);
   const windows: FeedWindow[] = [];
   for (const [name, total] of [
-    ["Credits", pools.recurring], ["Bought", pools.purchased], ["Bonus", pools.promotional],
+    ["Credits", pools.recurring],
+    ["Bought", pools.purchased],
+    ["Bonus", pools.promotional],
   ] satisfies [string, number][]) {
     const used = Math.min(usage, total);
     usage -= used;
-    if (total > 0) windows.push(feedWindow(null, Math.max(0, Math.min(100, used / total * 100)), name === "Credits" ? renewal : null, now, name));
+    if (total > 0)
+      windows.push(
+        feedWindow(
+          null,
+          Math.max(0, Math.min(100, (used / total) * 100)),
+          name === "Credits" ? renewal : null,
+          now,
+          name,
+        ),
+      );
   }
   const orgDraws = root.org_pool_draws_cents ?? root.orgPoolDrawsCents;
   const orgCap = root.org_user_cap_cents ?? root.orgUserCapCents;
   const orgDepleted = root.is_org_pool_depleted ?? root.isOrgPoolDepleted;
-  if (orgDepleted !== undefined && orgDepleted !== null && typeof orgDepleted !== "boolean") throw new HttpError("Perplexity", 200);
-  if (orgDraws !== undefined && orgDraws !== null || orgCap !== undefined && orgCap !== null) {
+  if (orgDepleted !== undefined && orgDepleted !== null && typeof orgDepleted !== "boolean")
+    throw new HttpError("Perplexity", 200);
+  if ((orgDraws !== undefined && orgDraws !== null) || (orgCap !== undefined && orgCap !== null)) {
     const drawn = Math.max(0, orgDraws === undefined || orgDraws === null ? 0 : number(orgDraws));
     if (orgCap !== undefined && orgCap !== null) number(orgCap);
-    const personalLeft = Math.max(0, pools.recurring + pools.purchased + pools.promotional - number(root.total_usage_cents ?? root.totalUsageCents));
+    const personalLeft = Math.max(
+      0,
+      pools.recurring + pools.purchased + pools.promotional - number(root.total_usage_cents ?? root.totalUsageCents),
+    );
     const available = orgDepleted === true ? 0 : Math.max(0, balance - personalLeft);
     const total = drawn + available;
-    windows.push(feedWindow(null, total > 0 ? drawn / total * 100 : 100, null, now, "Org"));
+    windows.push(feedWindow(null, total > 0 ? (drawn / total) * 100 : 100, null, now, "Org"));
   }
   if (!windows.length) windows.push(feedWindow(null, 100, renewal, now, "Credits"));
   // CodexBar promotes usable fallback pools after recurring credits have been exhausted.
@@ -89,7 +110,8 @@ function parseUsage(root: unknown, now: number): { windows: FeedWindow[]; exhaus
 }
 
 export const perplexity: Provider = {
-  id: "perplexity", name: "Perplexity",
+  id: "perplexity",
+  name: "Perplexity",
   async fetch(context): Promise<FeedAccount[]> {
     const raw = await cookieHeader(context, "perplexity", {
       domains: ["www.perplexity.ai", "perplexity.ai"],
@@ -99,19 +121,45 @@ export const perplexity: Provider = {
     const cookies = sessionCookies(raw);
     if (!cookies.length) throw new NotConfigured("Perplexity");
     const now = context.now();
-    const base: FeedAccount = { provider: "perplexity", account: accountLabel(null), blocked: false, observed_at: new Date(now * 1000).toISOString(), windows: [] };
+    const base: FeedAccount = {
+      provider: "perplexity",
+      account: accountLabel(null),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
+    };
     for (const cookie of cookies) {
-      const response = await context.fetch("https://www.perplexity.ai/rest/billing/credits?version=2.18&source=default", {
-        headers: { Cookie: cookie, Origin: "https://www.perplexity.ai", Referer: "https://www.perplexity.ai/account/usage", "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" },
-        signal: AbortSignal.timeout(30_000), redirect: "manual",
-      });
+      const response = await context.fetch(
+        "https://www.perplexity.ai/rest/billing/credits?version=2.18&source=default",
+        {
+          headers: {
+            Cookie: cookie,
+            Origin: "https://www.perplexity.ai",
+            Referer: "https://www.perplexity.ai/account/usage",
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+          },
+          signal: AbortSignal.timeout(30_000),
+          redirect: "manual",
+        },
+      );
       if (response.status === 401 || response.status === 403) continue;
       if (response.status === 429) throw new RateLimited("Perplexity", now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError("Perplexity", response.status);
       let root: unknown;
-      try { root = await response.json(); } catch { throw new HttpError("Perplexity", response.status); }
+      try {
+        root = await response.json();
+      } catch {
+        throw new HttpError("Perplexity", response.status);
+      }
       const parsed = parseUsage(root, now);
-      return [{ ...base, windows: parsed.windows, blocked: parsed.exhausted || parsed.windows.some((window) => (window.used_percent ?? 0) >= 100) }];
+      return [
+        {
+          ...base,
+          windows: parsed.windows,
+          blocked: parsed.exhausted || parsed.windows.some((window) => (window.used_percent ?? 0) >= 100),
+        },
+      ];
     }
     return [{ ...base, error: "sign in" }];
   },

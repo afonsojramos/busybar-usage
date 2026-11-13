@@ -54,14 +54,18 @@ test("falls back to the credentials file, honouring CLAUDE_CONFIG_DIR", async ()
 });
 
 test("an expired login asks to sign in without calling the API", async () => {
-  const context = fakeContext({ files: { "/home/test/.claude/.credentials.json": credentials({ expiresAt: NOW * 1000 - 1 }) } });
+  const context = fakeContext({
+    files: { "/home/test/.claude/.credentials.json": credentials({ expiresAt: NOW * 1000 - 1 }) },
+  });
   const [account] = await claude.fetch(context);
   assert.equal(account.error, "sign in");
   assert.equal(context.calls.length, 0);
 });
 
 test("a setup-token login cannot read usage", async () => {
-  const context = fakeContext({ files: { "/home/test/.claude/.credentials.json": credentials({ scopes: ["user:inference"] }) } });
+  const context = fakeContext({
+    files: { "/home/test/.claude/.credentials.json": credentials({ scopes: ["user:inference"] }) },
+  });
   const [account] = await claude.fetch(context);
   assert.equal(account.error, "no access");
 });
@@ -75,7 +79,10 @@ test("a 429 waits for Retry-After", async () => {
     files: { "/home/test/.claude/.credentials.json": credentials() },
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(claude.fetch(context), (error: unknown) => error instanceof RateLimited && error.until === NOW + 120);
+  await assert.rejects(
+    claude.fetch(context),
+    (error: unknown) => error instanceof RateLimited && error.until === NOW + 120,
+  );
 });
 
 test("a rejected token asks to sign in", async () => {

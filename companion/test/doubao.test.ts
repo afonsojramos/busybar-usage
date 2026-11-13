@@ -6,7 +6,7 @@ import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Adapted from CodexBar's doubao provider test responses.
 const payloads = [{ usage: { total_tokens: 1 } }];
-const env = ({ ARK_API_KEY: 'fixture-key' });
+const env = { ARK_API_KEY: "fixture-key" };
 
 test("doubao: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });
