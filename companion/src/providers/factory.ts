@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { browserLocalStorage } from "../browser-local-storage.ts";
 import { cookieHeader } from "../cookies.ts";
 import { apiKey, providerEntry } from "../keys.ts";
 import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, type FeedAccount, type FeedWindow } from "../feed.ts";
@@ -246,6 +247,14 @@ export const factory: Provider = {
       if (entry.cookieSource !== "manual") {
         for (const auth of await safariAuths(context)) {
           const result = await attempt(auth, ["https://api.factory.ai", baseURL]);
+          if (result) return [result];
+        }
+      }
+      if (entry.cookieSource !== "manual") {
+        for (const origin of ["https://app.factory.ai", "https://auth.factory.ai", "https://factory.ai"]) {
+          const token = await browserLocalStorage(context, origin, "workos:access-token");
+          if (!token?.trim()) continue;
+          const result = await attempt({ bearer: token.trim(), cookie: null }, ["https://api.factory.ai", baseURL]);
           if (result) return [result];
         }
       }
