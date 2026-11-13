@@ -7,7 +7,8 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     categories: { correctness: "error" },
     rules: {
-      // Provider CLIs print ANSI colour codes, which the parsers strip with control-character patterns.
+      // Control-character patterns strip ANSI colour codes from CLI output and reject control characters in
+      // cookies and other input.
       "no-control-regex": "off",
       // Providers stringify untyped JSON fields as CodexBar reads them; guarding each one would drift from its parsing.
       "typescript/no-base-to-string": "off",
