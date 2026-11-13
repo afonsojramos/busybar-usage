@@ -47,6 +47,13 @@ function barColor(percent: number): string {
 
 function windowElements(window: UsageWindow, row: number, y: number, nowSeconds: number): Element[] {
   const percent = currentPercent(window, nowSeconds);
+  if (percent === null) {
+    // No limit to draw against: the value takes the bar's place.
+    return [
+      { id: `w${row}_name`, type: "text", x: NAME_X, y, text: window.name.slice(0, 3), font: "tiny", color: GREY },
+      { id: `w${row}_value`, type: "text", x: WIDTH, y, align: "top_right", text: window.value ?? "", font: "tiny", color: "#FFFFFFFF" },
+    ];
+  }
   const full = percent >= 100;
   const fill = Math.round((Math.min(percent, 100) / 100) * (BAR_WIDTH - 2));
   // A full window shows how long until it resets instead of "100%".
@@ -101,7 +108,7 @@ export function accountFrame(account: Account, nowSeconds: number, measure: Meas
       type: "text",
       x: 0,
       y: ROW_Y[0],
-      text: fit(capitalize(account.provider), LABEL_WIDTH, measure),
+      text: fit(account.providerName ?? capitalize(account.provider), LABEL_WIDTH, measure),
       font: "tiny",
       color: PROVIDER_COLORS[account.provider] ?? "#FFFFFFFF",
     },

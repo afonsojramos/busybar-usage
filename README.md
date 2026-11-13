@@ -15,16 +15,37 @@ It has two parts:
 
 ## Supported providers
 
-| Provider | What the companion reads | Notes |
+The companion reads logins your tools already have, or API keys (see
+[Run the companion](#run-the-companion) for where it looks). It never refreshes or rewrites a
+login another tool owns, because Claude and Codex rotate refresh tokens and a second refresher
+would sign your tools out; when such a token expires, the bar shows "sign in" until the tool
+next runs. Gemini is the exception: Google refresh tokens do not rotate, so the companion
+refreshes an expired Gemini token in memory and never writes it back.
+
+| Provider | Reads | Shows |
 | --- | --- | --- |
-| Claude | Claude Code's sign-in: the `Claude Code-credentials` Keychain item on macOS, `~/.claude/.credentials.json` elsewhere (`CLAUDE_CONFIG_DIR` is honoured) | Needs a normal `claude` login. Tokens from `claude setup-token` cannot read usage. |
-| Codex | `~/.codex/auth.json` (`CODEX_HOME` is honoured) | Needs a ChatGPT login, not an API key. |
+| Claude | Claude Code's login (`Claude Code-credentials` Keychain item on macOS, `~/.claude/.credentials.json` elsewhere) | 5-hour and weekly limits |
+| Codex | `~/.codex/auth.json` (a ChatGPT login) | 5-hour and weekly limits |
+| Gemini | `~/.gemini/oauth_creds.json` from the Gemini CLI | daily Pro and Flash quotas |
+| Copilot | the token CodexBar saves with `codexbar config login --provider copilot` | premium requests and chat |
+| Kimi | `KIMI_CODE_API_KEY`, or the Kimi CLI's login | 5-hour, weekly and monthly limits |
+| z.ai | `Z_AI_API_KEY` | Coding Plan limits |
+| MiniMax | `MINIMAX_API_KEY` | Coding Plan limits |
+| Synthetic | `SYNTHETIC_API_KEY` | weekly credits |
+| Warp | `WARP_API_KEY` | monthly credits |
+| Kilo | `KILO_API_KEY`, or the Kilo CLI's login | Kilo Pass and credits |
+| Codebuff | `CODEBUFF_API_KEY`, or `~/.config/manicode/credentials.json` | weekly and credit quotas |
+| Ollama Cloud | `OLLAMA_API_KEY` | usage limits or balance |
+| OpenRouter | `OPENROUTER_API_KEY` | spending cap and balance |
+| DeepSeek | `DEEPSEEK_API_KEY` | balance |
+| Moonshot | `MOONSHOT_API_KEY` | balance |
+| Venice | `VENICE_API_KEY` | DIEM and USD balance |
+| DeepInfra | `DEEPINFRA_API_KEY` | billing quota and balance |
+| ElevenLabs | `ELEVENLABS_API_KEY` | character quota |
 
-The companion only reads these logins. It never refreshes or rewrites them, because both
-providers rotate refresh tokens and a second refresher would sign your tools out. When a token
-expires, the bar shows "sign in" until the tool next runs and refreshes it.
-
-More providers are being ported from [CodexBar](https://github.com/steipete/CodexBar).
+Each provider also accepts its key from the config files below, and from the alternative
+environment variable names CodexBar accepts. Requests and parsing follow CodexBar; sources that
+need a browser session (cookies) are not supported.
 
 ## Install the app
 
@@ -46,6 +67,15 @@ cd companion
 nub run start                           # the bar over USB (10.0.4.20)
 nub run start -- --host 192.168.1.130   # the bar over Wi-Fi
 nub run start -- --print --once         # print the feed instead of sending it
+```
+
+Providers that use an API key look for it, in order, in the provider's environment variable
+(such as `OPENROUTER_API_KEY`), in `~/.config/busybar-usage/config.json`, and in CodexBar's
+config (`~/.config/codexbar/config.json` or `~/.codexbar/config.json`), so a CodexBar setup
+works as it is. The companion's config looks like this; keep it private (`chmod 600`):
+
+```json
+{ "providers": { "openrouter": { "apiKey": "sk-or-..." } } }
 ```
 
 It updates every minute until stopped. `--providers claude,codex` limits it to some providers;
@@ -82,7 +112,8 @@ bar shows the more recent measurement.
 
 `account` is a short, non-identifying label: the first part of the login's email domain
 (`gmail`, `yld`). `resets_at` is in Unix seconds. `error` is optional and replaces the windows
-on the bar.
+on the bar. A window with no limit to measure against, such as a prepaid balance, has
+`"used_percent": null` and a short `value` (`"$12.40"`) that the bar shows instead of a bar.
 
 ## Development
 
