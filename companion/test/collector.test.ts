@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { test } from "node:test";
-import { APP_ID } from "../src/bar.ts";
+import { APP_ID, pushFeed } from "../src/bar.ts";
 import { Collector } from "../src/collector.ts";
 import type { FeedAccount } from "../src/feed.ts";
 import { NotConfigured, RateLimited, type Provider } from "../src/providers/types.ts";
@@ -127,4 +129,19 @@ test("leaves out providers that are not set up", async () => {
 test("writes where the app reads", async () => {
   const manifest = JSON.parse(await readFile(new URL("../../src/appmeta/manifest.json", import.meta.url), "utf8"));
   assert.equal(APP_ID, manifest.id);
+});
+
+test("a failed push does not quote the bar's password", async () => {
+  // busy-lib sends the password only after the bar answers /api/version.
+  const server = createServer((_request, response) => response.end(JSON.stringify({ api_semver: "27.15.0" })));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await assert.rejects(
+      pushFeed({ generated_at: "2026-11-13T00:00:00Z", accounts: [] }, { host: `127.0.0.1:${port}`, password: "secret\u0000value" }),
+      (error: Error) => !error.message.includes("secret"),
+    );
+  } finally {
+    server.close();
+  }
 });

@@ -16,5 +16,11 @@ export interface BarOptions {
 /** Writes the feed where the app reads it. */
 export async function pushFeed(feed: Feed, options: BarOptions): Promise<void> {
   const bar = new BusyBar({ addr: options.host, HTTPAccessPassword: options.password, timeout: 10_000 });
-  await bar.StorageWrite({ path: FEED_PATH, file: Buffer.from(JSON.stringify(feed)) });
+  try {
+    await bar.StorageWrite({ path: FEED_PATH, file: Buffer.from(JSON.stringify(feed)) });
+  } catch (error) {
+    // Node's fetch errors can quote a header value, and the password travels in one.
+    if (error instanceof TypeError) throw new TypeError("fetch failed");
+    throw error;
+  }
 }
