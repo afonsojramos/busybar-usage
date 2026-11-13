@@ -134,3 +134,8 @@ test("wayfinder preserves auth and rate limiting on optional metrics", async () 
   assert.equal(account.error, "sign in");
   await assert.rejects(wayfinder.fetch(fakeContext({ env, responses: responses("savings30d", json({}, 429)) })), RateLimited);
 });
+
+test("Wayfinder with no address configured and nothing listening is not set up", async () => {
+  const context = { ...fakeContext({}), fetch: async () => { throw new TypeError("fetch failed"); } };
+  await assert.rejects(wayfinder.fetch(context), NotConfigured);
+});

@@ -75,13 +75,17 @@ export const wayfinder: Provider = {
       blocked: false, observed_at: new Date(now * 1000).toISOString(), windows: [],
     };
     try {
-      const url = endpoint(text(context.env.WAYFINDER_GATEWAY_URL) ?? text(entry.enterpriseHost)
-        ?? "http://127.0.0.1:8088", "loopback");
+      const configured = text(context.env.WAYFINDER_GATEWAY_URL) ?? text(entry.enterpriseHost);
+      const url = endpoint(configured ?? "http://127.0.0.1:8088", "loopback");
       const path = url.pathname.replace(/\/+$/, "");
       url.search = "";
       url.hash = "";
       url.pathname = path + "/healthz";
-      const health = object(await request(context, url, null));
+      const health = object(await request(context, url, null).catch((error: unknown) => {
+        // Nothing listening at the default address, with none configured, means Wayfinder is not running here.
+        if (!configured && error instanceof TypeError) throw new NotConfigured(NAME);
+        throw error;
+      }));
       if (typeof health.status !== "string" || typeof health.offline !== "boolean") throw new HttpError(NAME, 200);
       url.pathname = path + "/router/models";
       const models = object(await request(context, url, null));

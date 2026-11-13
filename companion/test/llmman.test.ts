@@ -130,3 +130,8 @@ test("llmman preserves auth and rate limiting on the optional version endpoint",
   assert.equal(account.error, "sign in");
   await assert.rejects(llmman.fetch(fakeContext({ env, responses: [json(fixture()), json({}, 429)] })), RateLimited);
 });
+
+test("llmman with no address configured and nothing listening is not set up", async () => {
+  const context = { ...fakeContext({}), fetch: async () => { throw new TypeError("fetch failed"); } };
+  await assert.rejects(llmman.fetch(context), NotConfigured);
+});

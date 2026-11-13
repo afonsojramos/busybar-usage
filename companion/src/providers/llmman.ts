@@ -64,7 +64,8 @@ export const llmman: Provider = {
       blocked: false, observed_at: new Date(now * 1000).toISOString(), windows: [],
     };
     try {
-      const raw = text(context.env.LLMMAN_HOST) ?? text(entry.enterpriseHost) ?? "http://127.0.0.1:17434";
+      const configured = text(context.env.LLMMAN_HOST) ?? text(entry.enterpriseHost);
+      const raw = configured ?? "http://127.0.0.1:17434";
       const hasScheme = raw.includes("://");
       let url: URL;
       try { url = new URL(hasScheme ? raw : "http://" + raw); }
@@ -75,7 +76,11 @@ export const llmman: Provider = {
       if (url.search || url.hash) throw new NotConfigured(NAME);
       const path = url.pathname.replace(/\/+$/, "").replace(/\/v1$/, "");
       url.pathname = path + "/llmman/node";
-      const root = object(await request(context, url, key));
+      const root = object(await request(context, url, key).catch((error: unknown) => {
+        // Nothing listening at the default address, with none configured, means llmman is not running here.
+        if (!configured && error instanceof TypeError) throw new NotConfigured(NAME);
+        throw error;
+      }));
       const bytes = (value: unknown): number => {
         if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw new HttpError(NAME, 200);
         return value;
