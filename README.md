@@ -198,12 +198,13 @@ environment variables and settings it accepts.
 
 ## Install the app
 
-With the bar connected over USB:
+The project uses [Vite+](https://viteplus.dev) (`vp`), which installs the pinned pnpm. With the
+bar connected over USB:
 
 ```sh
-nub install
-nub run build
-nub run app:install
+vp install
+vp run build
+vp run app:install
 ```
 
 Open **AI Usage** from the bar's APPS menu. Turn the wheel to change page, press OK to refresh,
@@ -215,9 +216,9 @@ The **Uppercase text** setting draws every label in capitals.
 
 ```sh
 cd companion
-nub run start                           # the bar over USB (10.0.4.20)
-nub run start -- --host 192.168.1.130   # the bar over Wi-Fi
-nub run start -- --print --once         # print the feed instead of sending it
+vp run start                          # the bar over USB (10.0.4.20)
+vp run start --host 192.168.1.130     # the bar over Wi-Fi
+vp run start --print --once           # print the feed instead of sending it
 ```
 
 The bar never connects to the companion. Each minute the companion calls the bar's HTTP API
@@ -281,8 +282,9 @@ on the bar. A window with no limit to measure against, such as a prepaid balance
 ## Development
 
 ```sh
-nub run typecheck   # the app, its tests, and the companion
-nub run test        # the app's tests, then the companion's
+vp check            # format, lint and type-aware checks
+vp run typecheck    # tsc for the app, its tests, and the companion
+vp test             # the app's and the companion's tests
 ```
 
 The app runs in the bar's JerryScript runtime, not Node; see [AGENTS.md](AGENTS.md) for its

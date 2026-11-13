@@ -27,7 +27,7 @@ const log = (message: string) => console.error(`${new Date().toISOString()} ${me
 
 function options() {
   const args = process.argv.slice(2);
-  // Package runners such as `nub run start -- --once` pass the "--" separator through.
+  // Package runners such as `pnpm run start -- --once` pass the "--" separator through.
   if (args[0] === "--") args.shift();
   const { values } = parseArgs({
     args,
