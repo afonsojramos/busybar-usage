@@ -1,0 +1,83 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { APP_ID } from "../src/bar.ts";
+import { Collector } from "../src/collector.ts";
+import type { FeedAccount } from "../src/feed.ts";
+import { NotConfigured, RateLimited, type Provider } from "../src/providers/types.ts";
+import { fakeContext, NOW } from "./helpers.ts";
+
+const account = (percent: number): FeedAccount => ({
+  provider: "test",
+  account: "default",
+  blocked: false,
+  observed_at: "2026-11-13T00:00:00Z",
+  windows: [{ name: "5h", minutes: 300, used_percent: percent, resets_at: null }],
+});
+
+function scripted(results: Array<FeedAccount[] | Error>): Provider & { calls: number } {
+  const provider = {
+    id: "test",
+    name: "Test",
+    calls: 0,
+    async fetch() {
+      const result = results[provider.calls++];
+      if (result instanceof Error) throw result;
+      return result;
+    },
+  };
+  return provider;
+}
+
+test("keeps the last numbers through a failure, backs off, and logs each change once", async () => {
+  const logs: string[] = [];
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([[account(10)], new Error("boom"), [account(20)]]);
+  const collector = new Collector([provider], context, (message) => logs.push(message));
+
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 10);
+  now += 60;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 10);
+  now += 60;
+  await collector.collect();
+  assert.equal(provider.calls, 2, "waits out the backoff");
+  now += 300;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 20);
+  assert.deepEqual(logs, ["Test: updated", "Test: boom; keeping the last numbers", "Test: updated"]);
+});
+
+test("waits for a rate limit to pass", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([new RateLimited("Test", NOW + 120), [account(5)]]);
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 60;
+  await collector.collect();
+  assert.equal(provider.calls, 1);
+  now += 60;
+  assert.equal((await collector.collect()).accounts.length, 1);
+});
+
+test("drops the last numbers after an hour, even during a long rate limit", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([[account(5)], new RateLimited("Test", NOW + 86400)]);
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 60;
+  assert.equal((await collector.collect()).accounts.length, 1);
+  now += 3600;
+  assert.deepEqual((await collector.collect()).accounts, []);
+});
+
+test("leaves out providers that are not set up", async () => {
+  const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
+  assert.deepEqual((await collector.collect()).accounts, []);
+});
+
+test("writes where the app reads", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../../src/appmeta/manifest.json", import.meta.url), "utf8"));
+  assert.equal(APP_ID, manifest.id);
+});

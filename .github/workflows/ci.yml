@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: nubjs/setup-nub@v0
+        with:
+          node-version-file: .nvmrc
+
+      - run: nub ci
+
+      - run: nub run typecheck
+
+      - run: nub run test
+
+      - run: nub run build
