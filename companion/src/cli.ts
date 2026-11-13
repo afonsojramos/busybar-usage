@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { constants } from "node:os";
 import { parseArgs } from "node:util";
 import { pushFeed } from "./bar.ts";
 import { Collector } from "./collector.ts";
@@ -60,7 +61,8 @@ function options() {
 
 async function main(): Promise<void> {
   const settings = options();
-  const collector = new Collector(settings.selected, systemContext(), log);
+  // --once has no later collection to pick up a slow provider's numbers, so it waits for all of them.
+  const collector = new Collector(settings.selected, systemContext(), log, settings.once ? { waitMs: Infinity } : {});
   let pushStatus = "";
 
   const tick = async () => {
@@ -81,13 +83,18 @@ async function main(): Promise<void> {
     }
   };
 
+  // Exiting runs the exit handler that stops the CLIs providers started: they run in their own
+  // process groups, so Ctrl+C or a closed terminal does not reach them.
+  // A stopped loop is a clean shutdown; an interrupted --once run did not finish.
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+    process.on(signal, () => process.exit(settings.once ? 128 + constants.signals[signal] : 0));
+  }
+
   if (settings.once) {
     await tick();
     return;
   }
-  process.on("SIGINT", () => process.exit(0));
-  process.on("SIGTERM", () => process.exit(0));
-  // The next update waits for this one, so slow providers never overlap.
+  // A tick returns once the collector stops waiting; a slow provider keeps its one attempt running.
   for (;;) {
     await tick().catch((error) => log(error instanceof Error ? error.message : String(error)));
     await new Promise((resolve) => setTimeout(resolve, settings.interval * 1000));

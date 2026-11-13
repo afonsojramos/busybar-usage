@@ -1,0 +1,15 @@
+{
+  "period_days": 30,
+  "unit": "usd",
+  "priced": true,
+  "requests": 0,
+  "estimated_requests": 0,
+  "tokens": 0,
+  "realized": 0.0,
+  "baseline": 0.0,
+  "saved": 0.0,
+  "saved_pct": 0.0,
+  "by_route": {},
+  "by_key": {},
+  "price_table_version": "a3db80fd9a78"
+}

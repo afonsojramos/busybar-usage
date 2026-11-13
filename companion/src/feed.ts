@@ -56,7 +56,8 @@ export function feedWindow(
   nowSeconds: number,
   name = minutes === null ? "" : windowName(minutes),
 ): FeedWindow {
-  const used = resetsAt !== null && resetsAt <= nowSeconds ? 0 : Math.max(0, Math.round(usedPercent));
+  // Clamped here so no provider can report a window over its limit as more than 100%.
+  const used = resetsAt !== null && resetsAt <= nowSeconds ? 0 : Math.min(100, Math.max(0, Math.round(usedPercent)));
   return { name, minutes, used_percent: used, resets_at: resetsAt };
 }
 

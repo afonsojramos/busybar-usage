@@ -1,4 +1,4 @@
-import type { Context } from "../src/providers/types.ts";
+import type { Context, RunResult } from "../src/providers/types.ts";
 
 export const NOW = 1_794_580_000;
 
@@ -10,12 +10,22 @@ export interface Call {
 /** A context with in-memory files and Keychain items, and a fetch that answers from a queue. */
 export function fakeContext(options: {
   files?: Record<string, string>;
+  /** Binary files for readFileBytes; text files are also readable as bytes. */
+  binaryFiles?: Record<string, Uint8Array>;
+  /** Directory listings by path. */
+  dirs?: Record<string, string[]>;
+  /** Keychain items by service, or by "service/account" when an account is asked for. */
   keychain?: Record<string, string>;
   platform?: NodeJS.Platform;
   env?: NodeJS.ProcessEnv;
   responses?: Response[];
-}): Context & { calls: Call[] } {
+  /** Program results by "command arg1 arg2"; a missing entry means the program is not installed. */
+  commands?: Record<string, RunResult>;
+  /** Query results by "path::sql". */
+  sqlite?: Record<string, Record<string, unknown>[]>;
+}): Context & { calls: Call[]; runs: string[] } {
   const calls: Call[] = [];
+  const runs: string[] = [];
   const responses = [...(options.responses ?? [])];
   return {
     calls,
@@ -30,7 +40,18 @@ export function fakeContext(options: {
       return response;
     },
     readFile: async (path) => options.files?.[path] ?? null,
-    readKeychain: async (service) => options.keychain?.[service] ?? null,
+    readFileBytes: async (path) =>
+      options.binaryFiles?.[path] ?? (options.files?.[path] === undefined ? null : new TextEncoder().encode(options.files[path])),
+    listDir: async (path) => options.dirs?.[path] ?? null,
+    readKeychain: async (service, account) =>
+      options.keychain?.[account === undefined ? service : `${service}/${account}`] ?? null,
+    runs,
+    async run(command, args) {
+      const key = [command, ...args].join(" ");
+      runs.push(key);
+      return options.commands?.[key] ?? null;
+    },
+    querySqlite: async (path, sql) => options.sqlite?.[`${path}::${sql}`] ?? (options.files?.[path] === undefined ? null : []),
   };
 }
 

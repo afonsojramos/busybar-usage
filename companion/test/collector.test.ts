@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { test } from "node:test";
-import { APP_ID } from "../src/bar.ts";
+import { APP_ID, pushFeed } from "../src/bar.ts";
 import { Collector } from "../src/collector.ts";
 import type { FeedAccount } from "../src/feed.ts";
 import { NotConfigured, RateLimited, type Provider } from "../src/providers/types.ts";
@@ -72,6 +74,103 @@ test("drops the last numbers after an hour, even during a long rate limit", asyn
   assert.deepEqual((await collector.collect()).accounts, []);
 });
 
+test("asks a provider with a minimum interval at most that often", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = { ...scripted([[account(1)], [account(2)]]), minIntervalSeconds: 900 };
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 600;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 1);
+  now += 301;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 2);
+});
+
+test("a hanging provider does not hold up the others, and is not started twice", async () => {
+  let starts = 0;
+  const hanging: Provider = { id: "slow", name: "Slow", fetch: () => { starts += 1; return new Promise(() => {}); } };
+  const collector = new Collector([hanging, scripted([[account(7)], [account(8)]])], fakeContext({}), () => {}, { waitMs: 20 });
+  const feed = await collector.collect();
+  assert.equal(feed.accounts.length, 1);
+  await collector.collect();
+  assert.equal(starts, 1);
+});
+
+test("a slow provider's numbers arrive with a later collection", async () => {
+  let release: (accounts: FeedAccount[]) => void = () => {};
+  const slow: Provider = { id: "test", name: "Test", fetch: () => new Promise((resolve) => { release = resolve; }) };
+  const collector = new Collector([slow], fakeContext({}), () => {}, { waitMs: 20 });
+  assert.equal((await collector.collect()).accounts.length, 0);
+  release([account(3)]);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 3);
+});
+
+test("a failed attempt still counts toward the minimum interval", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([new Error("boom"), [account(2)]]);
+  provider.minIntervalSeconds = 900;
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 301;
+  await collector.collect();
+  assert.equal(provider.calls, 1, "the 5-minute error backoff must not beat the 15-minute minimum");
+  now += 600;
+  await collector.collect();
+  assert.equal(provider.calls, 2);
+});
+
+test("an attempt still running after 10 minutes is ignored, and the minimum interval still holds", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  let release: (accounts: FeedAccount[]) => void = () => {};
+  let starts = 0;
+  const slow: Provider = {
+    id: "test",
+    name: "Test",
+    minIntervalSeconds: 3600,
+    fetch: () => {
+      starts += 1;
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    },
+  };
+  const logs: string[] = [];
+  const collector = new Collector([slow], context, (message) => logs.push(message), { waitMs: 20 });
+  await collector.collect();
+  now += 700;
+  await collector.collect();
+  release([account(42)]);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual((await collector.collect()).accounts, []);
+  assert.equal(starts, 1, "the minimum interval holds off a new attempt");
+  assert.deepEqual(logs, ["Test: still running after 10 minutes; ignoring it"]);
+});
+
+test("with no wait limit, a collection waits for every provider", async () => {
+  const slow: Provider = { id: "test", name: "Test", fetch: () => new Promise((resolve) => setTimeout(() => resolve([account(4)]), 30)) };
+  const collector = new Collector([slow], fakeContext({}), () => {}, { waitMs: Infinity });
+  assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 4);
+});
+
+test("a provider with a long minimum interval keeps its numbers through one failed attempt", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([[account(3)], new Error("boom"), new Error("boom")]);
+  provider.minIntervalSeconds = 3600;
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 3600;
+  await collector.collect();
+  now += 60;
+  assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 3, "kept after the failed attempt");
+  now += 3600;
+  assert.deepEqual((await collector.collect()).accounts, [], "dropped after a second interval");
+  assert.equal(provider.calls, 3);
+});
+
 test("leaves out providers that are not set up", async () => {
   const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
   assert.deepEqual((await collector.collect()).accounts, []);
@@ -80,4 +179,19 @@ test("leaves out providers that are not set up", async () => {
 test("writes where the app reads", async () => {
   const manifest = JSON.parse(await readFile(new URL("../../src/appmeta/manifest.json", import.meta.url), "utf8"));
   assert.equal(APP_ID, manifest.id);
+});
+
+test("a failed push does not quote the bar's password", async () => {
+  // busy-lib sends the password only after the bar answers /api/version.
+  const server = createServer((_request, response) => response.end(JSON.stringify({ api_semver: "27.15.0" })));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  try {
+    await assert.rejects(
+      pushFeed({ generated_at: "2026-11-13T00:00:00Z", accounts: [] }, { host: `127.0.0.1:${port}`, password: "secret\u0000value" }),
+      (error: Error) => !error.message.includes("secret"),
+    );
+  } finally {
+    server.close();
+  }
 });

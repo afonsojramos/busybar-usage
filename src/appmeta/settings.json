@@ -7,6 +7,11 @@
       "type": "string",
       "default": "",
       "max_length": 64
+    },
+    "uppercase": {
+      "label": "Uppercase text",
+      "type": "boolean",
+      "default": false
     }
   }
 }
