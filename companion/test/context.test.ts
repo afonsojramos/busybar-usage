@@ -69,3 +69,11 @@ test("a timeout stops the program's descendants and settles even if they hold th
   assert.equal(result?.code, null);
   assert.ok(Date.now() - started < 1000, `settled after ${Date.now() - started} ms`);
 });
+
+test("a failed fetch never carries the request's headers in its error", async () => {
+  const context = systemContext();
+  await assert.rejects(
+    context.fetch("https://example.invalid/", { headers: { Authorization: "Bearer secret\nvalue" } }),
+    (error: unknown) => error instanceof TypeError && !String(error.message).includes("secret"),
+  );
+});

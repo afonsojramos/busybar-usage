@@ -113,7 +113,15 @@ export function systemContext(): Context {
     home: homedir(),
     platform: process.platform,
     now: () => Math.floor(Date.now() / 1000),
-    fetch: globalThis.fetch,
+    async fetch(input, init) {
+      try {
+        return await globalThis.fetch(input, init);
+      } catch (error) {
+        // Timeouts and aborts carry no request data; any other failure can quote a header holding a key.
+        if (error instanceof DOMException) throw error;
+        throw new TypeError("fetch failed");
+      }
+    },
     readFile: (path) => orNullWhenMissing(() => readFile(path, "utf8")),
     readFileBytes: (path) => orNullWhenMissing(async () => new Uint8Array(await readFile(path))),
     listDir: (path) => orNullWhenMissing(() => readdir(path)),
