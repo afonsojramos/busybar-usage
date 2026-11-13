@@ -1,0 +1,9 @@
+{
+  "format_version": 1,
+  "id": "app.afonsojramos.usage",
+  "name": "AI Usage",
+  "version": "0.2.0",
+  "api_version": "27.15.0",
+  "description": "Shows AI subscription usage (Claude, Codex and more) from a companion on your computer or a CLIProxyAPI hub",
+  "author": "Afonso Jorge Ramos"
+}

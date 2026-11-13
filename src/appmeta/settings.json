@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "version": 1,
+  "fields": {
+    "hub_url": {
+      "label": "Hub URL (optional)",
+      "type": "string",
+      "default": "",
+      "max_length": 64
+    }
+  }
+}

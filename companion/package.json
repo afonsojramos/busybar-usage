@@ -1,0 +1,29 @@
+{
+  "name": "busybar-usage",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Sends your AI subscription usage (Claude, Codex and more) to the AI Usage app on a BUSY Bar",
+  "type": "module",
+  "bin": {
+    "busybar-usage": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test 'test/**/*.test.ts'",
+    "start": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@busy-app/busy-lib": "0.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}
