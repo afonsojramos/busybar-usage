@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { APP_ID, pushFeed } from "../src/bar.ts";
 import { Collector } from "../src/collector.ts";
 import type { FeedAccount } from "../src/feed.ts";

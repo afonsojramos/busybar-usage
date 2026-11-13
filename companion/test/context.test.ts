@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { cookieHeader } from "../src/cookies.ts";
 import { systemContext } from "../src/context.ts";
 import { providerEntry } from "../src/keys.ts";

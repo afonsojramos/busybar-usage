@@ -1,4 +1,4 @@
-import test from "node:test";
+import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { groq, parseScalar } from "../src/providers/groq.ts";
 import { NotConfigured, RateLimited, HttpError } from "../src/providers/types.ts";

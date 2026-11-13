@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { codex } from "../src/providers/codex.ts";
 import { NotConfigured } from "../src/providers/types.ts";
 import { fakeContext, json, jwt, NOW } from "./helpers.ts";

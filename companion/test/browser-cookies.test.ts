@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createCipheriv, createHash, pbkdf2Sync } from "node:crypto";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { browserCookieHeader } from "../src/browser-cookies.ts";
 import { fakeContext, NOW } from "./helpers.ts";
 const sql = "SELECT host_key, name, value, encrypted_value, expires_utc, path FROM cookies";

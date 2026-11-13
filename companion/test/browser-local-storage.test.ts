@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { browserLocalStorage } from "../src/browser-local-storage.ts";
 import { factory } from "../src/providers/factory.ts";
 import { devin } from "../src/providers/devin.ts";

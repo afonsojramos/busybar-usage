@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { createCipheriv, pbkdf2Sync } from "node:crypto";
 import { cursor } from "../src/providers/cursor.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";

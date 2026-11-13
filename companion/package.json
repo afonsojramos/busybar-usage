@@ -16,7 +16,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test 'test/**/*.test.ts'",
     "start": "node src/cli.ts"
   },
   "dependencies": {
@@ -24,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "24.19.2",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vite-plus": "catalog:"
   }
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { pi } from "../src/providers/pi.ts";
 import { HttpError, NotConfigured } from "../src/providers/types.ts";
 import { fakeContext, NOW } from "./helpers.ts";

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { registerFontMaps, textWidth } from "@busy-app/busy-lib";
 import { small, tiny } from "@busy-app/busy-lib/fonts";
 import { accountFrame } from "../src/frame.ts";

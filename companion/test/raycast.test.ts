@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { raycast } from "../src/providers/raycast.ts";
 import { NotConfigured, RateLimited, HttpError } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";

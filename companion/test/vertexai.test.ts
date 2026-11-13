@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { vertexai, quotaPercent } from "../src/providers/vertexai.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, jwt, NOW } from "./helpers.ts";

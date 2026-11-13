@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { chatbox } from "../src/providers/chatbox.ts";
 import {
   HttpError,

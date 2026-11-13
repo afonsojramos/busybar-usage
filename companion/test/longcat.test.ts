@@ -1,4 +1,4 @@
-import test from "node:test";
+import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import { longcat } from "../src/providers/longcat.ts";
 import { NotConfigured, RateLimited, HttpError } from "../src/providers/types.ts";

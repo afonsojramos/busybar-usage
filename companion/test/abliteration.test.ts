@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { abliteration } from "../src/providers/abliteration.ts";
 import {
   HttpError,
