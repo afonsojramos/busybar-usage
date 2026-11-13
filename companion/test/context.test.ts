@@ -60,3 +60,12 @@ test("provider settings prefer the companion's entry over CodexBar's", async () 
   assert.deepEqual(await providerEntry(context, "demo"), { region: "eu" });
   assert.deepEqual(await providerEntry(fakeContext({}), "demo"), {});
 });
+
+test("a timeout stops the program's descendants and settles even if they hold the output open", async () => {
+  const context = systemContext();
+  const started = Date.now();
+  const script = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'inherit' }); setTimeout(() => {}, 5000);";
+  const result = await context.run(process.execPath, ["-e", script], { timeoutMs: 150 });
+  assert.equal(result?.code, null);
+  assert.ok(Date.now() - started < 1000, `settled after ${Date.now() - started} ms`);
+});

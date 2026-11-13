@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { copyFile, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -17,6 +17,22 @@ function readKeychain(service: string, account?: string): Promise<string | null>
   });
 }
 
+/** Children still running, so a timeout or the companion's exit can stop their whole process group. */
+const running = new Set<ChildProcess>();
+
+function killGroup(child: ChildProcess): void {
+  try {
+    // A negative pid signals the group, which also reaches anything the CLI started.
+    if (child.pid !== undefined) process.kill(-child.pid, "SIGKILL");
+  } catch {
+    child.kill("SIGKILL");
+  }
+}
+
+process.once("exit", () => {
+  for (const child of running) killGroup(child);
+});
+
 function run(command: string, args: string[], options: RunOptions = {}): Promise<RunResult | null> {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
@@ -24,27 +40,37 @@ function run(command: string, args: string[], options: RunOptions = {}): Promise
       env: { ...process.env, ...options.env },
       stdio: ["pipe", "pipe", "pipe"],
       shell: false,
+      // Its own process group, so a timeout can stop descendants that keep the pipes open.
+      detached: true,
     });
+    running.add(child);
     let stdout = "";
     let stderr = "";
     let settled = false;
     const finish = (result: RunResult | null) => {
+      running.delete(child);
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       resolve(result);
     };
-    const timer = setTimeout(() => child.kill("SIGKILL"), options.timeoutMs ?? 30_000);
-    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
+    const timer = setTimeout(() => {
+      killGroup(child);
+      // Settle now: a descendant that ignored the signal must not hold the result open.
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      finish({ code: null, stdout, stderr });
+    }, options.timeoutMs ?? 30_000);
+    child.stdout?.setEncoding("utf8").on("data", (chunk: string) => {
       if (stdout.length < MAX_OUTPUT) stdout += chunk;
     });
-    child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
+    child.stderr?.setEncoding("utf8").on("data", (chunk: string) => {
       if (stderr.length < MAX_OUTPUT) stderr += chunk;
     });
     child.on("error", (error: NodeJS.ErrnoException) => finish(error.code === "ENOENT" ? null : { code: null, stdout, stderr }));
     child.on("close", (code) => finish({ code, stdout, stderr }));
-    child.stdin.on("error", () => {});
-    child.stdin.end(options.input ?? "");
+    child.stdin?.on("error", () => {});
+    child.stdin?.end(options.input ?? "");
   });
 }
 
