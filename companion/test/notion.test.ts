@@ -43,7 +43,7 @@ test("notion: configured workspace and overage", async () => {
   const ctx = fakeContext({ files, responses: [json(spaces), json({ window: { used: 150, limit: 100, window: "6h" }, resetsInSeconds: 3600 })] });
   const account = (await notion.fetch(ctx))[0];
   assert.equal(account.blocked, true);
-  assert.equal(account.windows[0].used_percent, 150);
+  assert.equal(account.windows[0].used_percent, 100, "an overage shows as a full window");
   assert.equal(account.windows[0].minutes, 360);
 });
 

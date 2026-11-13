@@ -29,7 +29,7 @@ test("langdock maps the CodexBar fixture", async () => {
     return fetch(input, init);
   };
   const [account] = await langdock.fetch(context);
-  assert.deepEqual(account.windows.map(w => [w.minutes, w.used_percent]), [[300, 13], [10080, 104]]);
+  assert.deepEqual(account.windows.map(w => [w.minutes, w.used_percent]), [[300, 13], [10080, 100]]);
   assert.equal(account.blocked, true);
   assert.equal(account.provider, "langdock");
   assert.ok(account.windows.length <= 2);
