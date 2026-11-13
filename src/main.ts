@@ -36,7 +36,7 @@ let drawAgain = false;
 /** One refresh at a time. The firmware's fetch fails after 5 s without data, so a request cannot hang. */
 let refreshing = false;
 
-const measure = (text: string) => textWidth(text, "tiny");
+const measure = (text: string, font: "tiny" | "small") => textWidth(text, font);
 
 const report = (err: unknown) => console.error(`${APP}: ${err instanceof Error ? err.message : String(err)}`);
 
