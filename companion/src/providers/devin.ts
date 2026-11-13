@@ -1,5 +1,6 @@
 import { createDecipheriv, pbkdf2Sync } from "node:crypto";
 import { join } from "node:path";
+import { browserLocalStorage } from "../browser-local-storage.ts";
 import { cookieHeader } from "../cookies.ts";
 import { providerEntry } from "../keys.ts";
 import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
@@ -134,6 +135,83 @@ async function desktopAuth(context: Context): Promise<{ token: string; organizat
   return null;
 }
 
+function storageToken(storage: Map<string, string>): string | null {
+  function find(value: unknown, depth = 0): string | null {
+    if (depth > 20 || (!isRecord(value) && !Array.isArray(value))) return null;
+    if (isRecord(value)) {
+      for (const key of ["access_token", "accessToken"]) {
+        const token = value[key];
+        if (typeof token === "string" && token.trim().length > 20 && (token.startsWith("eyJ") || token.includes("."))) return token.trim();
+      }
+    }
+    for (const child of Object.values(value)) {
+      const token = find(child, depth + 1);
+      if (token) return token;
+    }
+    return null;
+  }
+  const ordered = [...storage].sort(([a], [b]) =>
+    (a.endsWith("auth1_session") ? 0 : a.includes("auth0spajs@@::") ? 1 : 2)
+    - (b.endsWith("auth1_session") ? 0 : b.includes("auth0spajs@@::") ? 1 : 2));
+  for (const [key, value] of ordered) {
+    try {
+      const json: unknown = JSON.parse(value);
+      if (key.endsWith("auth1_session") && isRecord(json) && typeof json.token === "string"
+        && json.token.startsWith("auth1_") && json.token.trim().length > 20) return json.token.trim();
+      const token = find(json);
+      if (token) return token;
+    } catch { continue; }
+  }
+  return null;
+}
+
+function storageOrganization(storage: Map<string, string>): string | null {
+  function decoded(raw: string): string {
+    try { const value: unknown = JSON.parse(raw); if (typeof value === "string") return value.trim(); } catch { /* Unquoted IDs are valid. */ }
+    return raw.trim();
+  }
+  function find(value: unknown, depth = 0): string | null {
+    if (depth > 20 || (!isRecord(value) && !Array.isArray(value))) return null;
+    if (isRecord(value)) {
+      for (const key of ["internalOrgId", "internal_org_id", "org_id", "orgId"]) {
+        const id = value[key];
+        if (typeof id === "string" && /^org[-_][A-Za-z0-9]{8,}$/.test(id)) return id;
+      }
+      for (const key of ["orgName", "org_name", "externalOrgId", "external_org_id"]) {
+        const slug = value[key];
+        if (typeof slug === "string" && organization(slug)) return slug;
+      }
+    }
+    for (const child of Object.values(value)) {
+      const org = find(child, depth + 1);
+      if (org) return org;
+    }
+    return null;
+  }
+  for (const [key, raw] of storage) {
+    if (!key.includes("last-internal-org-for-external-org-v1-")) continue;
+    const value = decoded(raw);
+    if (/^org[-_][A-Za-z0-9]{8,}$/.test(value)) return value;
+  }
+  for (const [key, raw] of storage) {
+    try { const value: unknown = JSON.parse(raw); const org = find(value); if (org) return org; } catch { /* Key metadata can still identify the organization. */ }
+    const internal = /org[-_][A-Za-z0-9]{8,}/.exec(key)?.[0];
+    if (internal) return internal;
+    const slug = key.split("-org_name-")[1];
+    if (slug && organization(slug)) return slug;
+  }
+  return null;
+}
+
+async function browserAuth(context: Context, override: unknown): Promise<{ token: string; organization: string | null } | null> {
+  const hasOrganization = typeof override === "string" && organization(override) !== null;
+  const storage = await browserLocalStorage(context, "https://app.devin.ai", () => true,
+    (values) => storageToken(values) !== null && (hasOrganization || storageOrganization(values) !== null));
+  if (!storage) return null;
+  const token = storageToken(storage);
+  return token ? { token, organization: storageOrganization(storage) } : null;
+}
+
 function organization(raw: string): { path: string; id: string | null } | null {
   let value = raw.trim();
   if (value.startsWith("https://")) {
@@ -160,10 +238,11 @@ export const devin: Provider = {
     if (context.env.DEVIN_BEARER_TOKEN !== undefined && !context.env.DEVIN_BEARER_TOKEN.trim()
       || context.env.DEVIN_AUTHORIZATION !== undefined && context.env.DEVIN_BEARER_TOKEN === undefined && !context.env.DEVIN_AUTHORIZATION.trim()) raw = null;
     const hasEnvironmentOverride = context.env.DEVIN_BEARER_TOKEN !== undefined || context.env.DEVIN_AUTHORIZATION !== undefined;
-    const desktop = !raw && !hasEnvironmentOverride && entry.cookieSource !== "manual" ? await desktopAuth(context) : null;
-    const token = raw?.replace(/^Authorization:\s*/i, "").replace(/^Bearer\s+/i, "").trim() ?? desktop?.token;
+    const browser = !raw && !hasEnvironmentOverride && entry.cookieSource !== "manual" ? await browserAuth(context, context.env.DEVIN_ORGANIZATION ?? context.env.DEVIN_ORG ?? entry.workspaceID) : null;
+    const desktop = !raw && !browser && !hasEnvironmentOverride && entry.cookieSource !== "manual" ? await desktopAuth(context) : null;
+    const token = raw?.replace(/^Authorization:\s*/i, "").replace(/^Bearer\s+/i, "").trim() ?? desktop?.token ?? browser?.token;
     if (!token) throw new NotConfigured(NAME);
-    const configured = context.env.DEVIN_ORGANIZATION ?? context.env.DEVIN_ORG ?? entry.workspaceID ?? desktop?.organization;
+    const configured = context.env.DEVIN_ORGANIZATION ?? context.env.DEVIN_ORG ?? entry.workspaceID ?? desktop?.organization ?? browser?.organization;
     const org = typeof configured === "string" ? organization(configured) : null;
     if (!org) throw new NotConfigured(NAME);
     const now = context.now();

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { browserLocalStorage } from "../browser-local-storage.ts";
 import { cookieHeader } from "../cookies.ts";
 import { providerEntry } from "../keys.ts";
 import { accountLabel, feedWindow, finiteNumber, isRecord, type FeedAccount, type FeedWindow } from "../feed.ts";
@@ -109,8 +110,21 @@ export const windsurf: Provider = {
     const entry = await providerEntry(context, "windsurf");
     const now = context.now();
     const base: FeedAccount = { provider: "windsurf", account: accountLabel(null), observed_at: new Date(now * 1000).toISOString(), blocked: false, windows: [] };
-    const raw = entry.cookieSource === "off" || entry.usageDataSource === "cli" ? null
+    let raw = entry.cookieSource === "off" || entry.usageDataSource === "cli" ? null
       : await cookieHeader(context, "windsurf", { domains: [] });
+    if (!raw && entry.cookieSource !== "off" && entry.cookieSource !== "manual" && entry.usageDataSource !== "cli") {
+      const keys = ["devin_session_token", "devin_auth1_token", "devin_account_id", "devin_primary_org_id"];
+      for (const origin of ["https://app.devin.ai", "https://windsurf.com"]) {
+        const values = await browserLocalStorage(context, origin, (key) => keys.includes(key),
+          (entries) => keys.every((key) => !!entries.get(key)?.trim()));
+        if (!values) continue;
+        raw = JSON.stringify(Object.fromEntries([...values].map(([key, value]) => {
+          try { const decoded: unknown = JSON.parse(value); if (typeof decoded === "string") return [key, decoded.trim()]; } catch { /* Unquoted values are valid. */ }
+          return [key, value.trim()];
+        })));
+        break;
+      }
+    }
     if (entry.cookieSource === "manual" && !raw && entry.usageDataSource === "web") throw new NotConfigured(NAME);
     if (raw) {
       try {

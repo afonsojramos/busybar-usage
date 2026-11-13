@@ -7,7 +7,7 @@ const firefoxSql = "SELECT host, name, value, expiry, path FROM moz_cookies";
 const chromiumEpoch = 11644473600;
 
 // Profile roots and Safe Storage identities, rather than application bundle names.
-const browsers = [
+export const browsers = [
   ["Google/Chrome", "google-chrome", "Chrome"],
   ["BraveSoftware/Brave-Browser", "BraveSoftware/Brave-Browser", "Brave"],
   ["Microsoft Edge", "microsoft-edge", "Microsoft Edge"],
