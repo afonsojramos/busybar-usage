@@ -54,6 +54,11 @@ export interface Provider {
   id: string;
   name: string;
   /**
+   * Ask at most this often, reusing the last numbers in between. For providers whose only usage
+   * check is a billable request, such as a one-token chat completion.
+   */
+  minIntervalSeconds?: number;
+  /**
    * Returns this provider's accounts. Throws NotConfigured when the machine has no login or key
    * for it, so the companion can skip it quietly.
    */

@@ -72,6 +72,18 @@ test("drops the last numbers after an hour, even during a long rate limit", asyn
   assert.deepEqual((await collector.collect()).accounts, []);
 });
 
+test("asks a provider with a minimum interval at most that often", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = { ...scripted([[account(1)], [account(2)]]), minIntervalSeconds: 900 };
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 600;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 1);
+  now += 301;
+  assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 2);
+});
+
 test("leaves out providers that are not set up", async () => {
   const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
   assert.deepEqual((await collector.collect()).accounts, []);

@@ -46,6 +46,7 @@ export class Collector {
     }
     if (state.accounts.length > 0 && now - state.fetchedAt > KEEP_SECONDS) state.accounts = [];
     if (now < state.retryAt) return;
+    if (provider.minIntervalSeconds && state.fetchedAt > 0 && now - state.fetchedAt < provider.minIntervalSeconds) return;
     try {
       state.accounts = await provider.fetch(this.context);
       state.fetchedAt = now;
