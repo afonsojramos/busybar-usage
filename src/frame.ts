@@ -33,13 +33,30 @@ const GLYPH_TOP = 2;
 /** Tiny glyphs fill rows y+1 to y+4; this leaves rows 14-15 for descenders such as g and y. */
 const ACCOUNT_Y = 9;
 
-/** The left column ends here, before the window names. */
-const LABEL_WIDTH = 25;
-const NAME_X = 27;
-/** Window names such as "30d" are up to three characters. */
-const BAR_X = 40;
-const BAR_WIDTH = 16;
+/** Window names such as "30d" are up to three characters, 13 pixels wide in capitals. */
+const NAME_WIDTH = 13;
+/** The bar ends here, before the right-aligned value: "100%" is 16 pixels wide. */
+const VALUE_X = 56;
 const BAR_HEIGHT = 5;
+
+/** Where each column starts, and how wide the label and the bar are. */
+interface Columns {
+  labelWidth: number;
+  nameX: number;
+  barX: number;
+  barWidth: number;
+}
+
+/**
+ * Capitals are wider: uppercase widens the label column to fit "CLAUDE", "COPILOT" and "CURSOR"
+ * (up to 30 pixels) and narrows the bar.
+ */
+function columns(uppercase: boolean): Columns {
+  const labelWidth = uppercase ? 30 : 25;
+  const nameX = labelWidth + 2;
+  const barX = nameX + NAME_WIDTH;
+  return { labelWidth, nameX, barX, barWidth: VALUE_X - barX };
+}
 
 /** Cuts text to fit a width, dropping characters from the end. */
 function fit(text: string, width: number, measure: MeasureText, font: "tiny" | "small"): string {
@@ -65,30 +82,37 @@ function barColor(percent: number): string {
   return GREEN;
 }
 
-function windowElements(window: UsageWindow, row: number, y: number, nowSeconds: number, style: TextStyle): Element[] {
+function windowElements(
+  window: UsageWindow,
+  row: number,
+  y: number,
+  nowSeconds: number,
+  style: TextStyle,
+  { nameX, barX, barWidth }: Columns,
+): Element[] {
   const name = cased(window.name.slice(0, 3), style);
   const percent = currentPercent(window, nowSeconds);
   if (percent === null) {
     // No limit to draw against: the value takes the bar's place.
     return [
-      { id: `w${row}_name`, type: "text", x: NAME_X, y, text: name, font: FONT, color: GREY },
+      { id: `w${row}_name`, type: "text", x: nameX, y, text: name, font: FONT, color: GREY },
       { id: `w${row}_value`, type: "text", x: WIDTH, y, align: "top_right", text: cased(window.value ?? "", style), font: FONT, color: "#FFFFFFFF" },
     ];
   }
   const full = percent >= 100;
-  const fill = Math.round((Math.min(percent, 100) / 100) * (BAR_WIDTH - 2));
+  const fill = Math.round((Math.min(percent, 100) / 100) * (barWidth - 2));
   // A full window shows how long until it resets instead of "100%".
   const value =
     full && window.resetsAt !== null ? formatRemaining(window.resetsAt, nowSeconds) : `${Math.round(percent)}%`;
 
   const elements: Element[] = [
-    { id: `w${row}_name`, type: "text", x: NAME_X, y, text: name, font: FONT, color: GREY },
+    { id: `w${row}_name`, type: "text", x: nameX, y, text: name, font: FONT, color: GREY },
     {
       id: `w${row}_box`,
       type: "rectangle",
-      x: BAR_X,
+      x: barX,
       y: y + GLYPH_TOP,
-      width: BAR_WIDTH,
+      width: barWidth,
       height: BAR_HEIGHT,
       border_width: 1,
       border_color: BAR_BORDER,
@@ -109,7 +133,7 @@ function windowElements(window: UsageWindow, row: number, y: number, nowSeconds:
     elements.push({
       id: `w${row}_fill`,
       type: "rectangle",
-      x: BAR_X + 1,
+      x: barX + 1,
       y: y + GLYPH_TOP + 1,
       width: fill,
       height: BAR_HEIGHT - 2,
@@ -123,7 +147,8 @@ function windowElements(window: UsageWindow, row: number, y: number, nowSeconds:
 
 /** The elements for one account's page. */
 export function accountFrame(account: Account, nowSeconds: number, style: TextStyle): Element[] {
-  const label = (text: string, font: "tiny" | "small") => fit(cased(text, style), LABEL_WIDTH, style.measure, font);
+  const layout = columns(style.uppercase);
+  const label = (text: string, font: "tiny" | "small") => fit(cased(text, style), layout.labelWidth, style.measure, font);
   const elements: Element[] = [
     {
       id: "provider",
@@ -145,16 +170,16 @@ export function accountFrame(account: Account, nowSeconds: number, style: TextSt
     },
   ];
   if (account.error !== null) {
-    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: cased(account.error, style), font: FONT, color: RED });
+    elements.push({ id: "w0_name", type: "text", x: layout.nameX, y: SINGLE_ROW_Y, text: cased(account.error, style), font: FONT, color: RED });
     return elements;
   }
   const windows = account.windows.slice(0, ROW_Y.length);
   windows.forEach((window, row) => {
     const y = windows.length === 1 ? SINGLE_ROW_Y : ROW_Y[row];
-    elements.push(...windowElements(window, row, y, nowSeconds, style));
+    elements.push(...windowElements(window, row, y, nowSeconds, style, layout));
   });
   if (windows.length === 0) {
-    elements.push({ id: "w0_name", type: "text", x: NAME_X, y: SINGLE_ROW_Y, text: cased("no data", style), font: FONT, color: GREY });
+    elements.push({ id: "w0_name", type: "text", x: layout.nameX, y: SINGLE_ROW_Y, text: cased("no data", style), font: FONT, color: GREY });
   }
   return elements;
 }

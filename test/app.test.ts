@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { registerFontMaps, textWidth } from "@busy-app/busy-lib";
+import { small, tiny } from "@busy-app/busy-lib/fonts";
 import { accountFrame } from "../src/frame.ts";
 
 /** About four pixels a character, close to the tiny font. */
@@ -104,6 +106,32 @@ test("uppercase draws every label in capitals and fits the capitals", () => {
     { measure, uppercase: true },
   );
   assert.deepEqual(texts(frame), ["CLAUDE", "GMAIL", "7D", "2D"]);
+});
+
+test("with the bar's fonts, uppercase CLAUDE and COPILOT fit and the columns do not overlap", () => {
+  registerFontMaps(small);
+  registerFontMaps(tiny);
+  const frameOf = (provider: string) =>
+    accountFrame(
+      account({ provider, account: "gmail", windows: [{ name: "30d", usedPercent: 50, resetsAt: null, value: null }] }),
+      1000,
+      { measure: textWidth, uppercase: true },
+    );
+  assert.equal(texts(frameOf("copilot"))[0], "COPILOT");
+  const frame = frameOf("claude");
+  assert.deepEqual(texts(frame), ["CLAUDE", "GMAIL", "30D", "50%"]);
+  type Placed = { id: string; type: string; x?: number; width?: number; text?: string; font?: string };
+  const at = (id: string) => frame.find((element) => element.id === id) as Placed;
+  const left = (id: string) => at(id).x ?? 0;
+  const right = (id: string) => {
+    const element = at(id);
+    const width = element.type === "text" ? textWidth(element.text ?? "", element.font as "tiny" | "small") : (element.width ?? 0);
+    return left(id) + width;
+  };
+  assert.ok(right("provider") <= left("w0_name"));
+  assert.ok(right("w0_name") <= left("w0_box"));
+  // The value is right-aligned to the screen's edge and can be as wide as "100%".
+  assert.ok(right("w0_box") <= 72 - textWidth("100%", "small"));
 });
 
 test("ids stay unique within a frame", () => {
