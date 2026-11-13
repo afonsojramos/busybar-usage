@@ -78,6 +78,25 @@ export async function resolveKey(context: Context, providerId: string, envNames:
   return (await fromCompanionConfig(context, providerId)) ?? (await fromCodexBarConfig(context, providerId));
 }
 
+/**
+ * A provider's settings entry, such as its region, workspace or base URL: the companion's entry when
+ * it has one, otherwise CodexBar's. Empty when neither config has the provider.
+ */
+export async function providerEntry(context: Context, providerId: string): Promise<Record<string, unknown>> {
+  const config = await readJson(context, companionConfigPath(context));
+  const providers = isRecord(config) ? config.providers : null;
+  const own = isRecord(providers) ? providers[providerId] : null;
+  if (isRecord(own)) return own;
+  for (const path of codexBarConfigPaths(context)) {
+    const codexBar = await readJson(context, path);
+    if (codexBar === null) continue;
+    const list = isRecord(codexBar) && Array.isArray(codexBar.providers) ? codexBar.providers : [];
+    const entry = list.find((provider) => isRecord(provider) && provider.id === providerId);
+    return isRecord(entry) ? entry : {};
+  }
+  return {};
+}
+
 /** The API key for a provider, or null when none is set anywhere. */
 export async function apiKey(context: Context, providerId: string, envNames: string[]): Promise<string | null> {
   return (await resolveKey(context, providerId, envNames))?.key ?? null;
