@@ -84,6 +84,8 @@ function cliWindows(text: string, now: number): FeedWindow[] | null {
 
 export const kiro: Provider = {
   id: "kiro", name: "Kiro",
+  // Runs the provider's CLI, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const now = context.now();
     const who = await context.run("kiro-cli", ["whoami"], { timeoutMs: 5_000 });

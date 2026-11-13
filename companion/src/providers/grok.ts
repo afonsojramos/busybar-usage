@@ -104,6 +104,8 @@ export function parseGrokWeb(bytes: Uint8Array, now: number): FeedWindow[] | nul
 
 export const grok: Provider = {
   id: "grok", name: "Grok",
+  // Runs the provider's CLI, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const now = context.now();
     const configured = await apiKey(context, "grok", ["GROK_OAUTH_TOKEN"]);

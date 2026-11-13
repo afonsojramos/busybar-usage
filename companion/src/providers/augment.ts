@@ -4,6 +4,8 @@ import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider
 
 export const augment: Provider = {
   id: "augment", name: "Augment",
+  // Runs the provider's CLI, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const now = context.now();
     const base: FeedAccount = {

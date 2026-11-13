@@ -90,6 +90,8 @@ function webUsage(text: string, now: number): FeedWindow[] | null {
 
 export const amp: Provider = {
   id: "amp", name: "Amp",
+  // Runs the provider's CLI, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const now = context.now();
     const base: FeedAccount = { provider: "amp", account: accountLabel(null), blocked: false,

@@ -4,6 +4,8 @@ import { HttpError, NotConfigured, type Provider } from "./types.ts";
 export const coderabbit: Provider = {
   id: "coderabbit",
   name: "CodeRabbit",
+  // Runs the provider's CLI, which is slow; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const result = await context.run(context.env.CODERABBIT_CLI_PATH || "coderabbit", ["usage"], {
       timeoutMs: 15_000,
