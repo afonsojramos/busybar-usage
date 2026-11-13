@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { llmman } from "../src/providers/llmman.ts";
 import { isRecord } from "../src/feed.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
@@ -81,13 +81,19 @@ test("llmman adds a deadline and refuses redirects", async () => {
 test("llmman reads CodexBar model memory and stored sizes", async () => {
   const context = fakeContext({ env, responses: [json(fixture()), json({ version: "test" })] });
   const [account] = await llmman.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.used_percent, w.value]),
-    [["memory", 25, undefined], ["stored", null, "10.5 GB"]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.used_percent, w.value]),
+    [
+      ["memory", 25, undefined],
+      ["stored", null, "10.5 GB"],
+    ],
+  );
   assert.equal(account.windows[0].minutes, null);
   assert.equal(account.windows[0].resets_at, null);
-  assert.deepEqual(context.calls.map((call) => call.url), [
-    "https://gateway.example/prefix/llmman/node", "https://gateway.example/prefix/api/version",
-  ]);
+  assert.deepEqual(
+    context.calls.map((call) => call.url),
+    ["https://gateway.example/prefix/llmman/node", "https://gateway.example/prefix/api/version"],
+  );
   assert.ok(context.calls.every((call) => call.headers.authorization === "Bearer fake-key"));
 });
 
@@ -100,8 +106,11 @@ test("llmman probes the default local daemon without a key", async () => {
 });
 
 test("llmman normalizes CLI host forms and permits private networks", async () => {
-  for (const [host, origin] of [["localhost", "http://localhost:17434"], ["0.0.0.0:18000", "http://127.0.0.1:18000"],
-    ["http://192.168.1.10:17434/v1", "http://192.168.1.10:17434"]]) {
+  for (const [host, origin] of [
+    ["localhost", "http://localhost:17434"],
+    ["0.0.0.0:18000", "http://127.0.0.1:18000"],
+    ["http://192.168.1.10:17434/v1", "http://192.168.1.10:17434"],
+  ]) {
     const context = fakeContext({ env: { LLMMAN_HOST: host }, responses: [json(fixture()), json({}, 404)] });
     await llmman.fetch(context);
     assert.equal(context.calls[0].url, origin + "/llmman/node");
@@ -109,10 +118,19 @@ test("llmman normalizes CLI host forms and permits private networks", async () =
 });
 
 test("llmman handles zero memory and malformed size fields", async () => {
-  const [account] = await llmman.fetch(fakeContext({ env, responses: [json({ memory: 0, loaded: {}, stored: {} }), json({}, 404)] }));
-  assert.deepEqual(account.windows.map((w) => w.value), ["0 B", "0 B"]);
-  for (const body of [{ memory: -1, loaded: {}, stored: {} }, { memory: 1, loaded: { a: "1" }, stored: {} },
-    { memory: 1, loaded: {} }, { memory: 1, loaded: [], stored: {} }]) {
+  const [account] = await llmman.fetch(
+    fakeContext({ env, responses: [json({ memory: 0, loaded: {}, stored: {} }), json({}, 404)] }),
+  );
+  assert.deepEqual(
+    account.windows.map((w) => w.value),
+    ["0 B", "0 B"],
+  );
+  for (const body of [
+    { memory: -1, loaded: {}, stored: {} },
+    { memory: 1, loaded: { a: "1" }, stored: {} },
+    { memory: 1, loaded: {} },
+    { memory: 1, loaded: [], stored: {} },
+  ]) {
     await assert.rejects(llmman.fetch(fakeContext({ env, responses: [json(body)] })), HttpError);
   }
 });
@@ -121,7 +139,10 @@ test("llmman preserves cancellation during its optional version request", async 
   const context = fakeContext({ env });
   let calls = 0;
   const cancelled = new DOMException("cancelled", "AbortError");
-  context.fetch = async () => { if (calls++ === 0) return json(fixture()); throw cancelled; };
+  context.fetch = async () => {
+    if (calls++ === 0) return json(fixture());
+    throw cancelled;
+  };
   await assert.rejects(llmman.fetch(context), (error: unknown) => error === cancelled);
 });
 
@@ -132,6 +153,11 @@ test("llmman preserves auth and rate limiting on the optional version endpoint",
 });
 
 test("llmman with no address configured and nothing listening is not set up", async () => {
-  const context = { ...fakeContext({}), fetch: async () => { throw new TypeError("fetch failed"); } };
+  const context = {
+    ...fakeContext({}),
+    fetch: async () => {
+      throw new TypeError("fetch failed");
+    },
+  };
   await assert.rejects(llmman.fetch(context), NotConfigured);
 });

@@ -10,13 +10,7 @@ import {
 } from "../feed.ts";
 import { resolveKey, providerEntry } from "../keys.ts";
 import { cookieHeader } from "../cookies.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-  retryAfterSeconds,
-  type Provider,
-} from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const ID = "commandcode";
 const NAME = "Command Code";
@@ -24,11 +18,7 @@ const fail = (): never => {
   throw new HttpError(NAME, 200);
 };
 function number(value: unknown, strings = true, negative = false): number {
-  const parsed = strings
-    ? finiteNumber(value)
-    : typeof value === "number" && Number.isFinite(value)
-      ? value
-      : null;
+  const parsed = strings ? finiteNumber(value) : typeof value === "number" && Number.isFinite(value) ? value : null;
   if (parsed === null || (!negative && parsed < 0)) return fail();
   return parsed;
 }
@@ -40,18 +30,13 @@ function compact(value: number): string {
   return text.length <= 8 ? text : value.toExponential(0);
 }
 function money(value: number, currency = "USD"): string {
-  const prefix =
-    currency === "USD" ? "$" : currency === "CNY" ? "¥" : currency + " ";
+  const prefix = currency === "USD" ? "$" : currency === "CNY" ? "¥" : currency + " ";
   const text = prefix + value.toFixed(2);
   return text.length <= 12 ? text : prefix + compact(value);
 }
 function date(value: unknown): number | null {
   const numeric = finiteNumber(value);
-  return numeric !== null && numeric > 0
-    ? numeric > 1e10
-      ? numeric / 1000
-      : numeric
-    : isoToSeconds(value);
+  return numeric !== null && numeric > 0 ? (numeric > 1e10 ? numeric / 1000 : numeric) : isoToSeconds(value);
 }
 export const commandcode: Provider = {
   id: ID,
@@ -72,22 +57,14 @@ export const commandcode: Provider = {
     const accounts = isRecord(entry.tokenAccounts) ? entry.tokenAccounts : null;
     const selected =
       accounts && Array.isArray(accounts.accounts)
-        ? accounts.accounts[
-            typeof accounts.activeIndex === "number" ? accounts.activeIndex : 0
-          ]
+        ? accounts.accounts[typeof accounts.activeIndex === "number" ? accounts.activeIndex : 0]
         : null;
     const savedSession =
-      entry.cookieSource === "manual" &&
-      isRecord(selected) &&
-      typeof selected.token === "string"
+      entry.cookieSource === "manual" && isRecord(selected) && typeof selected.token === "string"
         ? selected.token.trim()
         : null;
     let prefix = "/alpha";
-    if (
-      key &&
-      !savedSession &&
-      !(resolved?.source === "codexbar" && !resolved.entry?.apiKey && accounts)
-    )
+    if (key && !savedSession && !(resolved?.source === "codexbar" && !resolved.entry?.apiKey && accounts))
       headers.Authorization = `Bearer ${key}`;
     else {
       let cookie =
@@ -98,8 +75,7 @@ export const commandcode: Provider = {
       if (!cookie) throw new NotConfigured(NAME);
       cookie = cookie.replace(/^Cookie:\s*/i, "").trim();
       if (!cookie) throw new NotConfigured(NAME);
-      if (!cookie.includes("=") && !cookie.includes(";"))
-        cookie = `__Secure-commandcode_prod_.session_token=${cookie}`;
+      if (!cookie.includes("=") && !cookie.includes(";")) cookie = `__Secure-commandcode_prod_.session_token=${cookie}`;
       headers.Cookie = cookie;
       headers.Accept = "application/json, text/plain, */*";
       headers["Accept-Language"] = "en-US,en;q=0.9";
@@ -109,22 +85,14 @@ export const commandcode: Provider = {
       headers.Referer = "https://commandcode.ai/";
       prefix = "/internal";
     }
-    const get = async (
-      url: string,
-      additions: Record<string, string> = {},
-    ): Promise<unknown> => {
+    const get = async (url: string, additions: Record<string, string> = {}): Promise<unknown> => {
       const response = await context.fetch(url, {
         headers: { ...headers, ...additions },
         redirect: "error",
         signal: AbortSignal.timeout(30_000),
       });
-      if (response.status === 401 || response.status === 403)
-        throw new SignIn();
-      if (response.status === 429)
-        throw new RateLimited(
-          NAME,
-          now + retryAfterSeconds(response.headers, 300),
-        );
+      if (response.status === 401 || response.status === 403) throw new SignIn();
+      if (response.status === 429) throw new RateLimited(NAME, now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError(NAME, response.status);
       try {
         return await response.json();
@@ -133,9 +101,7 @@ export const commandcode: Provider = {
       }
     };
     try {
-      const body = await get(
-        `https://api.commandcode.ai${prefix}/billing/credits`,
-      );
+      const body = await get(`https://api.commandcode.ai${prefix}/billing/credits`);
       if (!isRecord(body)) return fail();
       const windows: FeedWindow[] = [];
       if (!isRecord(body.credits)) return fail();
@@ -156,26 +122,14 @@ export const commandcode: Provider = {
         const cap = finiteNumber(w.cap);
         if (cap === null || cap <= 0) continue;
         windows.push(
-          feedWindow(
-            minutes,
-            Math.min(100, ((finiteNumber(w.used) ?? 0) / cap) * 100),
-            date(w.resetAt),
-            now,
-          ),
+          feedWindow(minutes, Math.min(100, ((finiteNumber(w.used) ?? 0) / cap) * 100), date(w.resetAt), now),
         );
       }
       let subscription: Record<string, unknown> | null = null;
       // Subscription enrichment is optional and must not discard fresh credits on failure.
       try {
-        const response = await get(
-          `https://api.commandcode.ai${prefix}/billing/subscriptions`,
-        );
-        if (
-          isRecord(response) &&
-          response.success === true &&
-          isRecord(response.data)
-        )
-          subscription = response.data;
+        const response = await get(`https://api.commandcode.ai${prefix}/billing/subscriptions`);
+        if (isRecord(response) && response.success === true && isRecord(response.data)) subscription = response.data;
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") throw error;
       }
@@ -188,15 +142,9 @@ export const commandcode: Provider = {
         "individual-max": 150,
         "individual-ultra": 300,
       };
-      const planId =
-        typeof subscription?.planId === "string"
-          ? subscription.planId.toLowerCase()
-          : "";
+      const planId = typeof subscription?.planId === "string" ? subscription.planId.toLowerCase() : "";
       const reportedGrant = finiteNumber(credits.monthlyCreditsGranted);
-      const grant =
-        reportedGrant !== null && reportedGrant > 0
-          ? reportedGrant
-          : plans[planId];
+      const grant = reportedGrant !== null && reportedGrant > 0 ? reportedGrant : plans[planId];
       base.blocked = monthly <= 0;
       if (windows.length < 2)
         windows.push(
@@ -210,13 +158,11 @@ export const commandcode: Provider = {
               )
             : valueWindow("Monthly", money(monthly)),
         );
-      if (windows.length < 2)
-        windows.push(valueWindow("Bought", money(purchased)));
+      if (windows.length < 2) windows.push(valueWindow("Bought", money(purchased)));
       return [
         {
           ...base,
-          blocked:
-            base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
+          blocked: base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
           windows,
         },
       ];

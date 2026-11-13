@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { doubao } from "../src/providers/doubao.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Adapted from CodexBar's doubao provider test responses.
 const payloads = [{ usage: { total_tokens: 1 } }];
-const env = { ARK_API_KEY: "fixture-key", ...{} };
+const env = { ARK_API_KEY: "fixture-key" };
 
 test("doubao: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

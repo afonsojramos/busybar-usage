@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { aixy } from "../src/providers/aixy.ts";
 import { isRecord } from "../src/feed.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
@@ -93,8 +93,13 @@ test("aixy maps CodexBar reservations and overlapping budgets independently", as
   const context = fakeContext({ env, responses: [json(fixture())] });
   context.now = () => Date.parse("2026-09-24T12:00:00Z") / 1000;
   const [account] = await aixy.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.minutes, w.used_percent]),
-    [["7d", 10080, 40], ["30d", 43200, 30]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.minutes, w.used_percent]),
+    [
+      ["7d", 10080, 40],
+      ["30d", 43200, 30],
+    ],
+  );
   assert.equal(context.calls[0].url, "https://gateway.example/prefix/v1/usage");
   assert.equal(context.calls[0].headers.authorization, "Bearer fake-key");
   assert.equal(account.blocked, false);
@@ -106,7 +111,10 @@ test("aixy keeps zero analytics distinct from absent analytics and budgets", asy
     body.budgets = [];
     record(body.usage).spend_usd = spend;
     const [account] = await aixy.fetch(fakeContext({ env, responses: [json(body)] }));
-    assert.deepEqual(account.windows.map((w) => w.value), spend === null ? [] : ["$0.00"]);
+    assert.deepEqual(
+      account.windows.map((w) => w.value),
+      spend === null ? [] : ["$0.00"],
+    );
   }
   const body = fixture();
   body.budgets = [];
@@ -117,13 +125,27 @@ test("aixy keeps zero analytics distinct from absent analytics and budgets", asy
 
 test("aixy rejects foreign-key budgets, duplicates, bad amounts, dates and coverage", async () => {
   const patches: ((body: Record<string, unknown>) => void)[] = [
-    (body) => { record(body.key).id = "different"; },
-    (body) => { body.budgets = [...budgets(body), budgets(body)[0]]; },
-    (body) => { budgets(body)[0].limit_usd = "NaN"; },
-    (body) => { budgets(body)[0].resets_at = "invalid"; },
-    (body) => { record(body.usage).attributed_requests = 13; },
-    (body) => { record(body.usage).total_tokens = 1e30; },
-    (body) => { body.currency = "EUR"; },
+    (body) => {
+      record(body.key).id = "different";
+    },
+    (body) => {
+      body.budgets = [...budgets(body), budgets(body)[0]];
+    },
+    (body) => {
+      budgets(body)[0].limit_usd = "NaN";
+    },
+    (body) => {
+      budgets(body)[0].resets_at = "invalid";
+    },
+    (body) => {
+      record(body.usage).attributed_requests = 13;
+    },
+    (body) => {
+      record(body.usage).total_tokens = 1e30;
+    },
+    (body) => {
+      body.currency = "EUR";
+    },
   ];
   for (const patch of patches) {
     const body = fixture();
@@ -139,8 +161,13 @@ test("aixy keeps lifetime budgets without an invented reset", async () => {
   body.budgets = [budget];
   const context = fakeContext({ env: { AIXY_API_KEY: "fake-key" }, responses: [json(body)] });
   const [account] = await aixy.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.used_percent, w.value]),
-    [["life", 30, undefined], ["spend", null, "$1.25"]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.used_percent, w.value]),
+    [
+      ["life", 30, undefined],
+      ["spend", null, "$1.25"],
+    ],
+  );
   assert.equal(context.calls[0].url, "https://api.aixy-gateway.com/v1/usage");
 });
 
@@ -149,5 +176,8 @@ test("aixy detects hard exhaustion and rejects queried base URLs", async () => {
   record(budgets(body)[0].availability).remaining_usd = "0";
   const [account] = await aixy.fetch(fakeContext({ env, responses: [json(body)] }));
   assert.equal(account.blocked, true);
-  await assert.rejects(aixy.fetch(fakeContext({ env: { ...env, AIXY_BASE_URL: "https://aixy.example?probe=1" } })), NotConfigured);
+  await assert.rejects(
+    aixy.fetch(fakeContext({ env: { ...env, AIXY_BASE_URL: "https://aixy.example?probe=1" } })),
+    NotConfigured,
+  );
 });

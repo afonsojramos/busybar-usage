@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { zenmux } from "../src/providers/zenmux.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -16,7 +16,7 @@ const payloads = [
     },
   },
 ];
-const env = { ZENMUX_MANAGEMENT_API_KEY: "fixture-key", ...{} };
+const env = { ZENMUX_MANAGEMENT_API_KEY: "fixture-key" };
 
 test("zenmux: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

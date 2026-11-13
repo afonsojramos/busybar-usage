@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { bifrost } from "../src/providers/bifrost.ts";
 import { isRecord } from "../src/feed.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
@@ -93,8 +93,13 @@ test("bifrost requires a base URL", async () => {
 test("bifrost reads the CodexBar quota fixture without inventing calendar resets", async () => {
   const context = fakeContext({ env, responses: [json(fixture())] });
   const [account] = await bifrost.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.minutes, w.used_percent, w.resets_at]),
-    [["1M", null, 34, null], ["1Y", null, 10, null]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.minutes, w.used_percent, w.resets_at]),
+    [
+      ["1M", null, 34, null],
+      ["1Y", null, 10, null],
+    ],
+  );
   assert.equal(context.calls[0].url, "https://gateway.example/prefix/v1/api/governance/virtual-keys/quota");
   assert.equal(context.calls[0].headers["x-bf-vk"], "fake-key");
   assert.equal(context.calls[0].headers.authorization, undefined);
@@ -102,10 +107,30 @@ test("bifrost reads the CodexBar quota fixture without inventing calendar resets
 });
 
 test("bifrost uses override cycles and advances stale fixed resets", async () => {
-  for (const [mode, cycles, percent] of [["cycles", 1, 50], ["cycles", 0, 100], ["forever", 0, 50]] satisfies [string, number, number][]) {
-    const context = fakeContext({ env, responses: [json({ budgets: [{ id: "b", max_limit: 100, current_usage: 100,
-      override_amount: 100, override_mode: mode, override_cycles_remaining: cycles,
-      reset_duration: "1h30m", last_reset: new Date((NOW - 20_000) * 1000).toISOString() }] })] });
+  for (const [mode, cycles, percent] of [
+    ["cycles", 1, 50],
+    ["cycles", 0, 100],
+    ["forever", 0, 50],
+  ] satisfies [string, number, number][]) {
+    const context = fakeContext({
+      env,
+      responses: [
+        json({
+          budgets: [
+            {
+              id: "b",
+              max_limit: 100,
+              current_usage: 100,
+              override_amount: 100,
+              override_mode: mode,
+              override_cycles_remaining: cycles,
+              reset_duration: "1h30m",
+              last_reset: new Date((NOW - 20_000) * 1000).toISOString(),
+            },
+          ],
+        }),
+      ],
+    });
     const [account] = await bifrost.fetch(context);
     assert.equal(account.windows[0].used_percent, percent);
     assert.equal(account.windows[0].minutes, 90);
@@ -115,28 +140,62 @@ test("bifrost uses override cycles and advances stale fixed resets", async () =>
 });
 
 test("bifrost component rate limits supersede the compatibility merge", async () => {
-  const [account] = await bifrost.fetch(fakeContext({ env, responses: [json({
-    rate_limit: { request_max_limit: 100, request_current_usage: 99 },
-    rate_limits: [
-      { request_max_limit: 100, request_current_usage: 10, request_reset_duration: "1h" },
-      { request_max_limit: 100, request_current_usage: 20, request_reset_duration: "2h" },
-    ],
-  })] }));
-  assert.deepEqual(account.windows.map((w) => w.used_percent), [10, 20]);
+  const [account] = await bifrost.fetch(
+    fakeContext({
+      env,
+      responses: [
+        json({
+          rate_limit: { request_max_limit: 100, request_current_usage: 99 },
+          rate_limits: [
+            { request_max_limit: 100, request_current_usage: 10, request_reset_duration: "1h" },
+            { request_max_limit: 100, request_current_usage: 20, request_reset_duration: "2h" },
+          ],
+        }),
+      ],
+    }),
+  );
+  assert.deepEqual(
+    account.windows.map((w) => w.used_percent),
+    [10, 20],
+  );
 });
 
 test("bifrost falls back to singular rate limits and omits unknown counters", async () => {
-  const [account] = await bifrost.fetch(fakeContext({ env, responses: [json({ rate_limits: [], rate_limit: {
-    token_max_limit: 1000, token_current_usage: 500, token_reset_duration: "1h",
-    request_reset_duration: "1h", request_last_reset: new Date(NOW * 1000).toISOString(),
-  } })] }));
-  assert.deepEqual(account.windows.map((w) => [w.minutes, w.used_percent]), [[60, 50]]);
+  const [account] = await bifrost.fetch(
+    fakeContext({
+      env,
+      responses: [
+        json({
+          rate_limits: [],
+          rate_limit: {
+            token_max_limit: 1000,
+            token_current_usage: 500,
+            token_reset_duration: "1h",
+            request_reset_duration: "1h",
+            request_last_reset: new Date(NOW * 1000).toISOString(),
+          },
+        }),
+      ],
+    }),
+  );
+  assert.deepEqual(
+    account.windows.map((w) => [w.minutes, w.used_percent]),
+    [[60, 50]],
+  );
 });
 
 test("bifrost retains unlimited spend and inactive status", async () => {
-  const [account] = await bifrost.fetch(fakeContext({ env, responses: [json({
-    is_active: false, budgets: [{ id: "unlimited", max_limit: 0, current_usage: 5 }],
-  })] }));
+  const [account] = await bifrost.fetch(
+    fakeContext({
+      env,
+      responses: [
+        json({
+          is_active: false,
+          budgets: [{ id: "unlimited", max_limit: 0, current_usage: 5 }],
+        }),
+      ],
+    }),
+  );
   assert.equal(account.windows[0].value, "$5.00");
   assert.equal(account.blocked, true);
 });
@@ -150,16 +209,29 @@ test("bifrost detects exhausted scoped quotas even when key budgets fill both la
 });
 
 test("bifrost rejects invalid scalar and array shapes", async () => {
-  for (const body of [{ is_active: "yes" }, { budgets: {} }, { budgets: [{ id: "b", max_limit: "5" }] },
-    { budgets: [{ id: "b", max_limit: 5, override_cycles_remaining: 1.5 }] }]) {
+  for (const body of [
+    { is_active: "yes" },
+    { budgets: {} },
+    { budgets: [{ id: "b", max_limit: "5" }] },
+    { budgets: [{ id: "b", max_limit: 5, override_cycles_remaining: 1.5 }] },
+  ]) {
     await assert.rejects(bifrost.fetch(fakeContext({ env, responses: [json(body)] })), HttpError);
   }
 });
 
 test("bifrost selects spend from the shortest key-wide budget", async () => {
-  const [account] = await bifrost.fetch(fakeContext({ env, responses: [json({ budgets: [
-    { id: "year", max_limit: 0, current_usage: 100, reset_duration: "1Y" },
-    { id: "month", max_limit: 0, current_usage: 5, reset_duration: "1M" },
-  ] })] }));
+  const [account] = await bifrost.fetch(
+    fakeContext({
+      env,
+      responses: [
+        json({
+          budgets: [
+            { id: "year", max_limit: 0, current_usage: 100, reset_duration: "1Y" },
+            { id: "month", max_limit: 0, current_usage: 5, reset_duration: "1M" },
+          ],
+        }),
+      ],
+    }),
+  );
   assert.equal(account.windows[0].value, "$5.00");
 });

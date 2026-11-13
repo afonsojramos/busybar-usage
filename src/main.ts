@@ -166,9 +166,7 @@ function main(): void {
       clearInterval(refreshTimer);
       clearInterval(pageTimer);
       // Clear only after the draw in flight, so it cannot redraw over the cleared screen.
-      void (drawing ?? Promise.resolve())
-        .then(() => device.DisplayClear({ application_name: APP }))
-        .catch(report);
+      void (drawing ?? Promise.resolve()).then(() => device.DisplayClear({ application_name: APP })).catch(report);
       // Not detached from inside the handler itself: with nothing else left the unbind stops the app while this handler is still running.
       setTimeout(unbind, 0);
     }

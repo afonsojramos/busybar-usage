@@ -77,133 +77,134 @@ request) every hour. Self-hosted gateways (LiteLLM, sub2api, Bifrost and others)
 address in the provider's environment variable or `enterpriseHost` in the config; requests to
 anything other than localhost or a private network must use HTTPS.
 
-| Provider | Id | Reads |
-| --- | --- | --- |
-| Claude | `claude` | local login or files |
-| Codex | `codex` | local login or files |
-| Gemini | `gemini` | local login or files |
-| Copilot | `copilot` | API key |
-| Kimi | `kimi` | API key, local login or files |
-| z.ai | `zai` | API key, local login or files |
-| MiniMax | `minimax` | API key |
-| Synthetic | `synthetic` | API key |
-| Warp | `warp` | API key |
-| Kilo | `kilo` | API key, local login or files |
-| Codebuff | `codebuff` | API key, local login or files |
-| Ollama | `ollama` | API key |
-| OpenRouter | `openrouter` | API key |
-| DeepSeek | `deepseek` | API key |
-| Moonshot | `moonshot` | API key |
-| Venice | `venice` | API key |
-| DeepInfra | `deepinfra` | API key |
-| ElevenLabs | `elevenlabs` | API key |
-| Abacus | `abacus` | browser session |
-| abliteration.ai | `abliteration` | API key |
-| Aerostack | `aerostack` | API key |
-| ai& | `aiand` | API key |
-| Aixy | `aixy` | API key |
-| Alibaba | `alibaba` | API key, browser session |
-| Alibaba Token Plan | `alibabatokenplan` | its CLI, browser session |
-| Amp | `amp` | API key, its CLI, browser session |
-| Antigravity | `antigravity` | API key, local login or files, its CLI |
-| Atlas Cloud | `atlascloud` | API key |
-| Augment | `augment` | its CLI, browser session |
-| Azure OpenAI | `azureopenai` | API key |
-| Bedrock | `bedrock` | API key, its CLI |
-| Bifrost | `bifrost` | API key |
-| Chatbox AI | `chatbox` | API key |
-| Chutes | `chutes` | API key |
-| Claude Platform | `claudeplatform` | browser session |
-| ClawRouter | `clawrouter` | API key |
-| ClinePass | `clinepass` | API key, local login or files |
-| CodeRabbit | `coderabbit` | its CLI |
-| Command Code | `commandcode` | API key, browser session |
-| Cosmic AI | `cosmic` | API key |
-| Cursor | `cursor` | local login or files, browser session |
-| Deepgram | `deepgram` | API key |
-| Devin | `devin` | local login or files, browser session |
-| DevPass | `devpass` | API key |
-| Doubao | `doubao` | API key, its CLI |
-| Exa | `exa` | API key |
-| Factory | `factory` | API key, local login or files, browser session |
-| fal | `fal` | API key |
-| Fireworks | `fireworks` | API key |
-| FLORA | `flora` | API key |
-| Future AGI | `futureagi` | API key |
-| GitKraken | `gitkraken` | API key |
-| Grok | `grok` | API key, local login or files, its CLI, browser session |
-| Groq | `groq` | API key, browser session |
-| Helmcode | `helmcode` | browser session |
-| Hugging Face | `huggingface` | API key, local login or files, browser session |
-| Hyper | `hyper` | API key, browser session |
-| IBM Bob | `ibmbob` | API key |
-| JetBrains | `jetbrains` | local login or files |
-| Kiro | `kiro` | local login or files, its CLI |
-| Langdock | `langdock` | browser session |
-| Linkup | `linkup` | API key |
-| LiteLLM | `litellm` | API key |
-| LithosAI | `lithosai` | browser session |
-| llmman | `llmman` | API key |
-| LLM Proxy | `llmproxy` | API key |
-| LongCat | `longcat` | browser session |
-| Manus | `manus` | browser session |
-| MiMo | `mimo` | local login or files, browser session |
-| Mistral | `mistral` | browser session |
-| Munito | `munito` | API key |
-| Muse Code | `muse` | local login or files, browser session |
-| Muse | `museai` | browser session |
-| Neuralwatt | `neuralwatt` | API key |
-| Notion | `notion` | local login or files, browser session |
-| Nous | `nous` | API key, local login or files |
-| OpenAI | `openai` | API key |
-| OpenCode | `opencode` | local login or files, browser session |
-| OpenCode Go | `opencodego` | API key, local login or files, browser session |
-| OpenDesign | `opendesign` | browser session |
-| Parallel | `parallel` | browser session |
-| Perplexity | `perplexity` | browser session |
-| Pi | `pi` | local login or files |
-| Poe | `poe` | API key |
-| Qoder | `qoder` | browser session |
-| Qwen Cloud | `qwencloud` | browser session |
-| Raycast | `raycast` | browser session |
-| Replicate | `replicate` | browser session |
-| Sail Research | `sailresearch` | API key |
-| Sakana | `sakana` | browser session |
-| SiliconFlow | `siliconflow` | API key |
-| Sofya | `sofya` | API key |
-| Soniox | `soniox` | API key |
-| StepFun | `stepfun` | API key, browser session |
-| sub2api | `sub2api` | API key |
-| T3 Chat | `t3chat` | browser session |
-| Tavily | `tavily` | API key |
-| TinyApi | `tinyapi` | browser session |
-| Trae CN | `traecn` | browser session |
-| Tripo | `tripo` | API key |
-| TypeSafe | `typesafe` | browser session |
-| v0 | `v0` | API key |
-| Vercel | `vercel` | API key |
-| Vertex AI | `vertexai` | local login or files, its CLI |
-| Wayfinder | `wayfinder` | local service |
-| Windsurf | `windsurf` | local login or files, browser session |
-| WorkBuddy | `workbuddy` | local login or files, browser session |
-| xAI | `xai` | API key |
-| X API | `xapi` | browser session |
-| xKiro | `xkiro` | API key |
-| Zed | `zed` | local login or files, browser session |
-| ZenMux | `zenmux` | API key |
-| ZoomMate | `zoommate` | browser session |
+| Provider           | Id                 | Reads                                                   |
+| ------------------ | ------------------ | ------------------------------------------------------- |
+| Claude             | `claude`           | local login or files                                    |
+| Codex              | `codex`            | local login or files                                    |
+| Gemini             | `gemini`           | local login or files                                    |
+| Copilot            | `copilot`          | API key                                                 |
+| Kimi               | `kimi`             | API key, local login or files                           |
+| z.ai               | `zai`              | API key, local login or files                           |
+| MiniMax            | `minimax`          | API key                                                 |
+| Synthetic          | `synthetic`        | API key                                                 |
+| Warp               | `warp`             | API key                                                 |
+| Kilo               | `kilo`             | API key, local login or files                           |
+| Codebuff           | `codebuff`         | API key, local login or files                           |
+| Ollama             | `ollama`           | API key                                                 |
+| OpenRouter         | `openrouter`       | API key                                                 |
+| DeepSeek           | `deepseek`         | API key                                                 |
+| Moonshot           | `moonshot`         | API key                                                 |
+| Venice             | `venice`           | API key                                                 |
+| DeepInfra          | `deepinfra`        | API key                                                 |
+| ElevenLabs         | `elevenlabs`       | API key                                                 |
+| Abacus             | `abacus`           | browser session                                         |
+| abliteration.ai    | `abliteration`     | API key                                                 |
+| Aerostack          | `aerostack`        | API key                                                 |
+| ai&                | `aiand`            | API key                                                 |
+| Aixy               | `aixy`             | API key                                                 |
+| Alibaba            | `alibaba`          | API key, browser session                                |
+| Alibaba Token Plan | `alibabatokenplan` | its CLI, browser session                                |
+| Amp                | `amp`              | API key, its CLI, browser session                       |
+| Antigravity        | `antigravity`      | API key, local login or files, its CLI                  |
+| Atlas Cloud        | `atlascloud`       | API key                                                 |
+| Augment            | `augment`          | its CLI, browser session                                |
+| Azure OpenAI       | `azureopenai`      | API key                                                 |
+| Bedrock            | `bedrock`          | API key, its CLI                                        |
+| Bifrost            | `bifrost`          | API key                                                 |
+| Chatbox AI         | `chatbox`          | API key                                                 |
+| Chutes             | `chutes`           | API key                                                 |
+| Claude Platform    | `claudeplatform`   | browser session                                         |
+| ClawRouter         | `clawrouter`       | API key                                                 |
+| ClinePass          | `clinepass`        | API key, local login or files                           |
+| CodeRabbit         | `coderabbit`       | its CLI                                                 |
+| Command Code       | `commandcode`      | API key, browser session                                |
+| Cosmic AI          | `cosmic`           | API key                                                 |
+| Cursor             | `cursor`           | local login or files, browser session                   |
+| Deepgram           | `deepgram`         | API key                                                 |
+| Devin              | `devin`            | local login or files, browser session                   |
+| DevPass            | `devpass`          | API key                                                 |
+| Doubao             | `doubao`           | API key, its CLI                                        |
+| Exa                | `exa`              | API key                                                 |
+| Factory            | `factory`          | API key, local login or files, browser session          |
+| fal                | `fal`              | API key                                                 |
+| Fireworks          | `fireworks`        | API key                                                 |
+| FLORA              | `flora`            | API key                                                 |
+| Future AGI         | `futureagi`        | API key                                                 |
+| GitKraken          | `gitkraken`        | API key                                                 |
+| Grok               | `grok`             | API key, local login or files, its CLI, browser session |
+| Groq               | `groq`             | API key, browser session                                |
+| Helmcode           | `helmcode`         | browser session                                         |
+| Hugging Face       | `huggingface`      | API key, local login or files, browser session          |
+| Hyper              | `hyper`            | API key, browser session                                |
+| IBM Bob            | `ibmbob`           | API key                                                 |
+| JetBrains          | `jetbrains`        | local login or files                                    |
+| Kiro               | `kiro`             | local login or files, its CLI                           |
+| Langdock           | `langdock`         | browser session                                         |
+| Linkup             | `linkup`           | API key                                                 |
+| LiteLLM            | `litellm`          | API key                                                 |
+| LithosAI           | `lithosai`         | browser session                                         |
+| llmman             | `llmman`           | API key                                                 |
+| LLM Proxy          | `llmproxy`         | API key                                                 |
+| LongCat            | `longcat`          | browser session                                         |
+| Manus              | `manus`            | browser session                                         |
+| MiMo               | `mimo`             | local login or files, browser session                   |
+| Mistral            | `mistral`          | browser session                                         |
+| Munito             | `munito`           | API key                                                 |
+| Muse Code          | `muse`             | local login or files, browser session                   |
+| Muse               | `museai`           | browser session                                         |
+| Neuralwatt         | `neuralwatt`       | API key                                                 |
+| Notion             | `notion`           | local login or files, browser session                   |
+| Nous               | `nous`             | API key, local login or files                           |
+| OpenAI             | `openai`           | API key                                                 |
+| OpenCode           | `opencode`         | local login or files, browser session                   |
+| OpenCode Go        | `opencodego`       | API key, local login or files, browser session          |
+| OpenDesign         | `opendesign`       | browser session                                         |
+| Parallel           | `parallel`         | browser session                                         |
+| Perplexity         | `perplexity`       | browser session                                         |
+| Pi                 | `pi`               | local login or files                                    |
+| Poe                | `poe`              | API key                                                 |
+| Qoder              | `qoder`            | browser session                                         |
+| Qwen Cloud         | `qwencloud`        | browser session                                         |
+| Raycast            | `raycast`          | browser session                                         |
+| Replicate          | `replicate`        | browser session                                         |
+| Sail Research      | `sailresearch`     | API key                                                 |
+| Sakana             | `sakana`           | browser session                                         |
+| SiliconFlow        | `siliconflow`      | API key                                                 |
+| Sofya              | `sofya`            | API key                                                 |
+| Soniox             | `soniox`           | API key                                                 |
+| StepFun            | `stepfun`          | API key, browser session                                |
+| sub2api            | `sub2api`          | API key                                                 |
+| T3 Chat            | `t3chat`           | browser session                                         |
+| Tavily             | `tavily`           | API key                                                 |
+| TinyApi            | `tinyapi`          | browser session                                         |
+| Trae CN            | `traecn`           | browser session                                         |
+| Tripo              | `tripo`            | API key                                                 |
+| TypeSafe           | `typesafe`         | browser session                                         |
+| v0                 | `v0`               | API key                                                 |
+| Vercel             | `vercel`           | API key                                                 |
+| Vertex AI          | `vertexai`         | local login or files, its CLI                           |
+| Wayfinder          | `wayfinder`        | local service                                           |
+| Windsurf           | `windsurf`         | local login or files, browser session                   |
+| WorkBuddy          | `workbuddy`        | local login or files, browser session                   |
+| xAI                | `xai`              | API key                                                 |
+| X API              | `xapi`             | browser session                                         |
+| xKiro              | `xkiro`            | API key                                                 |
+| Zed                | `zed`              | local login or files, browser session                   |
+| ZenMux             | `zenmux`           | API key                                                 |
+| ZoomMate           | `zoommate`         | browser session                                         |
 
 The ids match CodexBar's, so CodexBar's documentation for each provider describes the keys,
 environment variables and settings it accepts.
 
 ## Install the app
 
-With the bar connected over USB:
+The project uses [Vite+](https://viteplus.dev) (`vp`), which installs the pinned pnpm. With the
+bar connected over USB:
 
 ```sh
-nub install
-nub run build
-nub run app:install
+vp install
+vp run build
+vp run app:install
 ```
 
 Open **AI Usage** from the bar's APPS menu. Turn the wheel to change page, press OK to refresh,
@@ -215,9 +216,9 @@ The **Uppercase text** setting draws every label in capitals.
 
 ```sh
 cd companion
-nub run start                           # the bar over USB (10.0.4.20)
-nub run start -- --host 192.168.1.130   # the bar over Wi-Fi
-nub run start -- --print --once         # print the feed instead of sending it
+vp run start                          # the bar over USB (10.0.4.20)
+vp run start --host 192.168.1.130     # the bar over Wi-Fi
+vp run start --print --once           # print the feed instead of sending it
 ```
 
 The bar never connects to the companion. Each minute the companion calls the bar's HTTP API
@@ -281,8 +282,9 @@ on the bar. A window with no limit to measure against, such as a prepaid balance
 ## Development
 
 ```sh
-nub run typecheck   # the app, its tests, and the companion
-nub run test        # the app's tests, then the companion's
+vp check            # format, lint and type-aware checks
+vp run typecheck    # tsc for the app, its tests, and the companion
+vp test             # the app's and the companion's tests
 ```
 
 The app runs in the bar's JerryScript runtime, not Node; see [AGENTS.md](AGENTS.md) for its

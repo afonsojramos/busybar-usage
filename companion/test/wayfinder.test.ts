@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { wayfinder } from "../src/providers/wayfinder.ts";
 import { isRecord } from "../src/feed.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
@@ -12,7 +12,9 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function fixture(name = "usage"): Record<string, unknown> {
-  const value: unknown = JSON.parse(readFileSync(new URL(`./fixtures/wayfinder/${name}.json`, import.meta.url), "utf8"));
+  const value: unknown = JSON.parse(
+    readFileSync(new URL(`./fixtures/wayfinder/${name}.json`, import.meta.url), "utf8"),
+  );
   return record(value);
 }
 
@@ -85,10 +87,17 @@ function responses(savings = "savings30d", metrics = new Response("metrics")) {
 test("wayfinder reads CodexBar's captured local gateway responses", async () => {
   const context = fakeContext({ responses: responses() });
   const [account] = await wayfinder.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.used_percent, w.value]),
-    [["saved", null, "<$0.01"], ["reqs", null, "14"]]);
-  assert.deepEqual(context.calls.map((call) => new URL(call.url).pathname),
-    ["/healthz", "/router/models", "/v1/savings", "/metrics"]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.used_percent, w.value]),
+    [
+      ["saved", null, "<$0.01"],
+      ["reqs", null, "14"],
+    ],
+  );
+  assert.deepEqual(
+    context.calls.map((call) => new URL(call.url).pathname),
+    ["/healthz", "/router/models", "/v1/savings", "/metrics"],
+  );
   assert.equal(new URL(context.calls[2].url).search, "?period=30d");
   assert.equal(new URL(context.calls[0].url).origin, "http://127.0.0.1:8088");
   assert.ok(context.calls.every((call) => call.headers.authorization === undefined));
@@ -101,21 +110,36 @@ test("wayfinder never presents relative savings as dollars", async () => {
 });
 
 test("wayfinder tolerates unavailable metrics and zero traffic", async () => {
-  const context = fakeContext({ env, responses: responses("savingsZeros", new Response("unavailable", { status: 503 })) });
+  const context = fakeContext({
+    env,
+    responses: responses("savingsZeros", new Response("unavailable", { status: 503 })),
+  });
   const [account] = await wayfinder.fetch(context);
-  assert.deepEqual(account.windows.map((w) => w.value), ["$0.00", "0"]);
+  assert.deepEqual(
+    account.windows.map((w) => w.value),
+    ["$0.00", "0"],
+  );
 });
 
 test("wayfinder supports configured path prefixes and rejects remote HTTP", async () => {
-  const context = fakeContext({ env: { WAYFINDER_GATEWAY_URL: "https://wayfinder.example/wf/" }, responses: responses() });
+  const context = fakeContext({
+    env: { WAYFINDER_GATEWAY_URL: "https://wayfinder.example/wf/" },
+    responses: responses(),
+  });
   await wayfinder.fetch(context);
   assert.equal(context.calls[0].url, "https://wayfinder.example/wf/healthz");
-  await assert.rejects(wayfinder.fetch(fakeContext({ env: { WAYFINDER_GATEWAY_URL: "http://192.168.1.5" } })), NotConfigured);
+  await assert.rejects(
+    wayfinder.fetch(fakeContext({ env: { WAYFINDER_GATEWAY_URL: "http://192.168.1.5" } })),
+    NotConfigured,
+  );
 });
 
 test("wayfinder validates required models and savings bodies", async () => {
-  for (const replies of [[json({})], [json(fixture("healthOK")), json({ models: [] })],
-    [json(fixture("healthOK")), json(fixture("models")), json({})]]) {
+  for (const replies of [
+    [json({})],
+    [json(fixture("healthOK")), json({ models: [] })],
+    [json(fixture("healthOK")), json(fixture("models")), json({})],
+  ]) {
     await assert.rejects(wayfinder.fetch(fakeContext({ env, responses: replies })), HttpError);
   }
 });
@@ -125,17 +149,28 @@ test("wayfinder preserves cancellation from metrics", async () => {
   const replies = responses();
   const cancelled = new DOMException("cancelled", "AbortError");
   let calls = 0;
-  context.fetch = async () => { if (calls++ === 3) throw cancelled; return replies.shift() ?? json({}); };
+  context.fetch = async () => {
+    if (calls++ === 3) throw cancelled;
+    return replies.shift() ?? json({});
+  };
   await assert.rejects(wayfinder.fetch(context), (error: unknown) => error === cancelled);
 });
 
 test("wayfinder preserves auth and rate limiting on optional metrics", async () => {
   const [account] = await wayfinder.fetch(fakeContext({ env, responses: responses("savings30d", json({}, 401)) }));
   assert.equal(account.error, "sign in");
-  await assert.rejects(wayfinder.fetch(fakeContext({ env, responses: responses("savings30d", json({}, 429)) })), RateLimited);
+  await assert.rejects(
+    wayfinder.fetch(fakeContext({ env, responses: responses("savings30d", json({}, 429)) })),
+    RateLimited,
+  );
 });
 
 test("Wayfinder with no address configured and nothing listening is not set up", async () => {
-  const context = { ...fakeContext({}), fetch: async () => { throw new TypeError("fetch failed"); } };
+  const context = {
+    ...fakeContext({}),
+    fetch: async () => {
+      throw new TypeError("fetch failed");
+    },
+  };
   await assert.rejects(wayfinder.fetch(context), NotConfigured);
 });

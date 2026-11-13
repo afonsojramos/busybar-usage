@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { clinepass } from "../src/providers/clinepass.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -17,7 +17,7 @@ const payloads = [
     },
   },
 ];
-const env = { CLINE_API_KEY: "fixture-key", ...{} };
+const env = { CLINE_API_KEY: "fixture-key" };
 
 test("clinepass: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

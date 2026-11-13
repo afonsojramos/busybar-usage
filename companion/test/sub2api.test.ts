@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { sub2api } from "../src/providers/sub2api.ts";
 import { isRecord } from "../src/feed.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
@@ -94,8 +94,13 @@ test("sub2api maps CodexBar quota and rate limits shortest first", async () => {
   const context = fakeContext({ env, responses: [json(fixture())] });
   context.now = () => Date.parse("2026-07-10T00:00:00Z") / 1000;
   const [account] = await sub2api.fetch(context);
-  assert.deepEqual(account.windows.map((w) => [w.name, w.minutes, w.used_percent]),
-    [["5h", 300, 25], ["7d", 10080, 20]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.name, w.minutes, w.used_percent]),
+    [
+      ["5h", 300, 25],
+      ["7d", 10080, 20],
+    ],
+  );
   assert.equal(account.blocked, false);
   const url = new URL(context.calls[0].url);
   assert.equal(url.pathname, "/prefix/v1/usage");
@@ -106,7 +111,13 @@ test("sub2api maps CodexBar quota and rate limits shortest first", async () => {
 
 test("sub2api keeps daily and weekly subscription counters", async () => {
   const [account] = await sub2api.fetch(fakeContext({ env, responses: [json(fixture("subscription"))] }));
-  assert.deepEqual(account.windows.map((w) => [w.minutes, w.used_percent]), [[1440, 20], [10080, 25]]);
+  assert.deepEqual(
+    account.windows.map((w) => [w.minutes, w.used_percent]),
+    [
+      [1440, 20],
+      [10080, 25],
+    ],
+  );
   assert.ok(account.windows.every((w) => w.resets_at === null));
 });
 
@@ -132,7 +143,10 @@ test("sub2api treats isValid false as an expired login", async () => {
 
 test("sub2api accepts complete usage URLs and rejects non-loopback HTTP", async () => {
   for (const suffix of ["", "/v1", "/v1/usage"]) {
-    const context = fakeContext({ env: { ...env, SUB2API_BASE_URL: "http://127.0.0.1:8080" + suffix }, responses: [json(fixture("wallet"))] });
+    const context = fakeContext({
+      env: { ...env, SUB2API_BASE_URL: "http://127.0.0.1:8080" + suffix },
+      responses: [json(fixture("wallet"))],
+    });
     await sub2api.fetch(context);
     assert.equal(new URL(context.calls[0].url).pathname, "/v1/usage");
   }
@@ -142,16 +156,22 @@ test("sub2api accepts complete usage URLs and rejects non-loopback HTTP", async 
 });
 
 test("sub2api rejects incomplete quota and malformed reset data", async () => {
-  for (const body of [{ quota: { used: 2 } }, { subscription: { daily_usage_usd: "2" } },
-    { rate_limits: [{ window: "5h", used: 2, limit: 10, remaining: 8, reset_at: "invalid" }] }]) {
+  for (const body of [
+    { quota: { used: 2 } },
+    { subscription: { daily_usage_usd: "2" } },
+    { rate_limits: [{ window: "5h", used: 2, limit: 10, remaining: 8, reset_at: "invalid" }] },
+  ]) {
     await assert.rejects(sub2api.fetch(fakeContext({ env, responses: [json(body)] })), HttpError);
   }
 });
 
 test("sub2api cannot interpret prototype keys as window lengths", async () => {
-  const [account] = await sub2api.fetch(fakeContext({ env, responses: [json({ rate_limits: [
-    { window: "constructor", used: 1, limit: 10, remaining: 9 },
-  ] })] }));
+  const [account] = await sub2api.fetch(
+    fakeContext({
+      env,
+      responses: [json({ rate_limits: [{ window: "constructor", used: 1, limit: 10, remaining: 9 }] })],
+    }),
+  );
   assert.equal(account.windows[0].minutes, null);
   assert.equal(account.windows[0].used_percent, 10);
 });

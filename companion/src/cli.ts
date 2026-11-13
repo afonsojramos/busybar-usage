@@ -27,7 +27,7 @@ const log = (message: string) => console.error(`${new Date().toISOString()} ${me
 
 function options() {
   const args = process.argv.slice(2);
-  // Package runners such as `nub run start -- --once` pass the "--" separator through.
+  // Package runners such as `pnpm run start -- --once` pass the "--" separator through.
   if (args[0] === "--") args.shift();
   const { values } = parseArgs({
     args,
@@ -45,8 +45,12 @@ function options() {
     process.exit(0);
   }
   const interval = Number(values.interval);
-  if (!Number.isInteger(interval) || interval < 30) throw new Error("--interval must be a whole number of seconds, at least 30");
-  const wanted = values.providers?.split(",").map((id) => id.trim()).filter(Boolean);
+  if (!Number.isInteger(interval) || interval < 30)
+    throw new Error("--interval must be a whole number of seconds, at least 30");
+  const wanted = values.providers
+    ?.split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   const unknown = wanted?.filter((id) => !providers.some((provider) => provider.id === id)) ?? [];
   if (unknown.length > 0) throw new Error(`unknown provider: ${unknown.join(", ")}`);
   return {

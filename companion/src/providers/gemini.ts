@@ -1,5 +1,13 @@
 import { delimiter, join, resolve } from "node:path";
-import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, type FeedAccount, type FeedWindow } from "../feed.ts";
+import {
+  accountLabel,
+  feedWindow,
+  finiteNumber,
+  isoToSeconds,
+  isRecord,
+  type FeedAccount,
+  type FeedWindow,
+} from "../feed.ts";
 import { jwtPayload } from "./codex.ts";
 import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
 
@@ -40,17 +48,25 @@ export function parseUsage(body: unknown, now: number): FeedWindow[] | null {
   for (const bucket of body.buckets) {
     if (!isRecord(bucket) || typeof bucket.modelId !== "string") continue;
     const model = bucket.modelId.toLowerCase();
-    const tier = model.includes("pro") ? "Pro" : model.includes("flash-lite") ? "Lite" : model.includes("flash") ? "Flash" : null;
+    const tier = model.includes("pro")
+      ? "Pro"
+      : model.includes("flash-lite")
+        ? "Lite"
+        : model.includes("flash")
+          ? "Flash"
+          : null;
     const fraction = finiteNumber(bucket.remainingFraction);
     if (!tier || fraction === null) continue;
     const existing = tiers.get(tier);
     if (!existing || fraction < existing.fraction) tiers.set(tier, { fraction, reset: isoToSeconds(bucket.resetTime) });
   }
   if (tiers.size === 0) return null;
-  return ["Pro", "Flash", "Lite"].flatMap((name) => {
-    const tier = tiers.get(name);
-    return tier ? [feedWindow(1440, (1 - tier.fraction) * 100, tier.reset, now, name)] : [];
-  }).slice(0, 2);
+  return ["Pro", "Flash", "Lite"]
+    .flatMap((name) => {
+      const tier = tiers.get(name);
+      return tier ? [feedWindow(1440, (1 - tier.fraction) * 100, tier.reset, now, name)] : [];
+    })
+    .slice(0, 2);
 }
 
 export const gemini: Provider = {
@@ -59,7 +75,11 @@ export const gemini: Provider = {
   async fetch(context): Promise<FeedAccount[]> {
     const file = await context.readFile(join(context.home, ".gemini/oauth_creds.json"));
     let credentials: unknown;
-    try { credentials = file === null ? null : JSON.parse(file); } catch { credentials = null; }
+    try {
+      credentials = file === null ? null : JSON.parse(file);
+    } catch {
+      credentials = null;
+    }
     if (!isRecord(credentials)) throw new NotConfigured("Gemini");
     let token = typeof credentials.access_token === "string" ? credentials.access_token : "";
     const refresh = typeof credentials.refresh_token === "string" ? credentials.refresh_token : "";
@@ -67,15 +87,22 @@ export const gemini: Provider = {
     const now = context.now();
     const claims = typeof credentials.id_token === "string" ? jwtPayload(credentials.id_token) : null;
     const base: FeedAccount = {
-      provider: "gemini", account: accountLabel(typeof claims?.email === "string" ? claims.email : null),
-      blocked: false, observed_at: new Date(now * 1000).toISOString(), windows: [],
+      provider: "gemini",
+      account: accountLabel(typeof claims?.email === "string" ? claims.email : null),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
     };
     async function request(url: string, init: RequestInit): Promise<Record<string, unknown>> {
       const response = await context.fetch(url, { ...init, signal: AbortSignal.timeout(30_000) });
       if (response.status === 429) throw new RateLimited("Gemini", now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError("Gemini", response.status);
       let body: unknown;
-      try { body = await response.json(); } catch { throw new HttpError("Gemini", response.status); }
+      try {
+        body = await response.json();
+      } catch {
+        throw new HttpError("Gemini", response.status);
+      }
       if (!isRecord(body)) throw new HttpError("Gemini", response.status);
       return body;
     }
@@ -86,30 +113,52 @@ export const gemini: Provider = {
         if (!client) return [{ ...base, error: "sign in" }];
         // Google refresh tokens do not rotate; keep refreshed access tokens in memory only.
         const refreshed = await request("https://oauth2.googleapis.com/token", {
-          method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ client_id: client.id, client_secret: client.secret, refresh_token: refresh, grant_type: "refresh_token" }).toString(),
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: client.id,
+            client_secret: client.secret,
+            refresh_token: refresh,
+            grant_type: "refresh_token",
+          }).toString(),
         });
         if (typeof refreshed.access_token !== "string" || !refreshed.access_token) throw new HttpError("Gemini", 200);
         token = refreshed.access_token;
       }
       const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
       const assist = await request(`${ROOT}loadCodeAssist`, {
-        method: "POST", headers, body: JSON.stringify({ metadata: { ideType: "GEMINI_CLI", pluginType: "GEMINI" } }),
+        method: "POST",
+        headers,
+        body: JSON.stringify({ metadata: { ideType: "GEMINI_CLI", pluginType: "GEMINI" } }),
       });
       const project = assist.cloudaicompanionProject;
-      let projectId = typeof project === "string" ? project : isRecord(project) ? project.id ?? project.projectId : null;
+      let projectId =
+        typeof project === "string" ? project : isRecord(project) ? (project.id ?? project.projectId) : null;
       if (typeof projectId !== "string" || !projectId.trim()) {
-        const projects = await request("https://cloudresourcemanager.googleapis.com/v1/projects", { headers: { Authorization: `Bearer ${token}` } });
-        projectId = Array.isArray(projects.projects) ? projects.projects.find((p: unknown) => isRecord(p) && typeof p.projectId === "string" && (p.projectId.startsWith("gen-lang-client") || (isRecord(p.labels) && "generative-language" in p.labels)))?.projectId : null;
+        const projects = await request("https://cloudresourcemanager.googleapis.com/v1/projects", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        projectId = Array.isArray(projects.projects)
+          ? projects.projects.find(
+              (p: unknown) =>
+                isRecord(p) &&
+                typeof p.projectId === "string" &&
+                (p.projectId.startsWith("gen-lang-client") ||
+                  (isRecord(p.labels) && "generative-language" in p.labels)),
+            )?.projectId
+          : null;
       }
       const body = await request(`${ROOT}retrieveUserQuota`, {
-        method: "POST", headers, body: JSON.stringify(typeof projectId === "string" ? { project: projectId.trim() } : {}),
+        method: "POST",
+        headers,
+        body: JSON.stringify(typeof projectId === "string" ? { project: projectId.trim() } : {}),
       });
       const windows = parseUsage(body, now);
       if (windows === null) throw new HttpError("Gemini", 200);
       return [{ ...base, windows, blocked: windows.some((w) => (w.used_percent ?? 0) >= 100) }];
     } catch (error) {
-      if (error instanceof HttpError && (error.status === 401 || error.status === 403)) return [{ ...base, error: "sign in" }];
+      if (error instanceof HttpError && (error.status === 401 || error.status === 403))
+        return [{ ...base, error: "sign in" }];
       throw error;
     }
   },

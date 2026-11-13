@@ -41,7 +41,8 @@ export function fakeContext(options: {
     },
     readFile: async (path) => options.files?.[path] ?? null,
     readFileBytes: async (path) =>
-      options.binaryFiles?.[path] ?? (options.files?.[path] === undefined ? null : new TextEncoder().encode(options.files[path])),
+      options.binaryFiles?.[path] ??
+      (options.files?.[path] === undefined ? null : new TextEncoder().encode(options.files[path])),
     listDir: async (path) => options.dirs?.[path] ?? null,
     readKeychain: async (service, account) =>
       options.keychain?.[account === undefined ? service : `${service}/${account}`] ?? null,
@@ -51,7 +52,8 @@ export function fakeContext(options: {
       runs.push(key);
       return options.commands?.[key] ?? null;
     },
-    querySqlite: async (path, sql) => options.sqlite?.[`${path}::${sql}`] ?? (options.files?.[path] === undefined ? null : []),
+    querySqlite: async (path, sql) =>
+      options.sqlite?.[`${path}::${sql}`] ?? (options.files?.[path] === undefined ? null : []),
   };
 }
 

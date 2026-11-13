@@ -1,39 +1,33 @@
 {
   "name": "busybar-usage-app",
-  "private": true,
   "version": "0.2.0",
+  "private": true,
   "description": "Shows AI subscription usage (Claude, Codex and more) from a companion on your computer or a CLIProxyAPI hub",
   "author": "Afonso Jorge Ramos",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc && tsc -p test && nub run --cwd companion typecheck",
+    "typecheck": "tsc && tsc -p test && tsc -p companion",
+    "check": "vp check",
+    "check:fix": "vp check --fix",
+    "test": "vp test --run",
     "build": "busy-cli build",
     "app:install": "busy-cli app install",
     "app:uninstall": "busy-cli app uninstall",
     "app:run": "busy-cli app run",
-    "app:stop": "busy-cli app stop",
-    "test": "node --test 'test/**/*.test.ts' && nub run --cwd companion test"
-  },
-  "engines": {
-    "node": ">=24 <26"
-  },
-  "devDependencies": {
-    "@busy-app/cli": "0.6.0",
-    "typescript": "~6.0.3",
-    "vite": "8.1.4",
-    "@types/node": "24.19.2"
+    "app:stop": "busy-cli app stop"
   },
   "dependencies": {
     "@busy-app/busy-lib": "0.21.1"
   },
-  "devEngines": {
-    "packageManager": {
-      "name": "nub",
-      "version": "^0.10.0",
-      "onFail": "ignore"
-    }
+  "devDependencies": {
+    "@busy-app/cli": "0.6.0",
+    "@types/node": "24.19.2",
+    "typescript": "~6.0.3",
+    "vite": "8.1.4",
+    "vite-plus": "catalog:"
   },
-  "workspaces": [
-    "companion"
-  ]
+  "engines": {
+    "node": ">=24 <26"
+  },
+  "packageManager": "pnpm@10.34.9"
 }

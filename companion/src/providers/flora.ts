@@ -1,19 +1,6 @@
-import {
-  accountLabel,
-  finiteNumber,
-  isRecord,
-  valueWindow,
-  type FeedAccount,
-  type FeedWindow,
-} from "../feed.ts";
+import { accountLabel, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey, providerEntry } from "../keys.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-  retryAfterSeconds,
-  type Provider,
-} from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const ID = "flora";
 const NAME = "FLORA";
@@ -21,11 +8,7 @@ const fail = (): never => {
   throw new HttpError(NAME, 200);
 };
 function number(value: unknown, strings = true, negative = false): number {
-  const parsed = strings
-    ? finiteNumber(value)
-    : typeof value === "number" && Number.isFinite(value)
-      ? value
-      : null;
+  const parsed = strings ? finiteNumber(value) : typeof value === "number" && Number.isFinite(value) ? value : null;
   if (parsed === null || (!negative && parsed < 0)) return fail();
   return parsed;
 }
@@ -37,8 +20,7 @@ function compact(value: number): string {
   return text.length <= 8 ? text : value.toExponential(0);
 }
 function money(value: number, currency = "USD"): string {
-  const prefix =
-    currency === "USD" ? "$" : currency === "CNY" ? "¥" : currency + " ";
+  const prefix = currency === "USD" ? "$" : currency === "CNY" ? "¥" : currency + " ";
   const text = prefix + value.toFixed(2);
   return text.length <= 12 ? text : prefix + compact(value);
 }
@@ -60,27 +42,17 @@ export const flora: Provider = {
     if (!key) throw new NotConfigured(NAME);
     headers.Authorization = `Bearer ${key}`;
     const entry = await providerEntry(context, ID);
-    const workspace = String(
-      entry.workspaceID ?? context.env.FLORA_WORKSPACE_ID ?? "",
-    ).trim();
+    const workspace = String(entry.workspaceID ?? context.env.FLORA_WORKSPACE_ID ?? "").trim();
     if (!/^ws_[A-Za-z0-9]+$/.test(workspace)) throw new NotConfigured(NAME);
     const today = new Date(now * 1000).toISOString().slice(0, 10);
-    const get = async (
-      url: string,
-      additions: Record<string, string> = {},
-    ): Promise<unknown> => {
+    const get = async (url: string, additions: Record<string, string> = {}): Promise<unknown> => {
       const response = await context.fetch(url, {
         headers: { ...headers, ...additions },
         redirect: "error",
         signal: AbortSignal.timeout(30_000),
       });
-      if (response.status === 401 || response.status === 403)
-        throw new SignIn();
-      if (response.status === 429)
-        throw new RateLimited(
-          NAME,
-          now + retryAfterSeconds(response.headers, 300),
-        );
+      if (response.status === 401 || response.status === 403) throw new SignIn();
+      if (response.status === 429) throw new RateLimited(NAME, now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError(NAME, response.status);
       try {
         return await response.json();
@@ -95,25 +67,16 @@ export const flora: Provider = {
       if (!isRecord(body)) return fail();
       const windows: FeedWindow[] = [];
       const available = number(body.available_cost, false, true);
-      const currency =
-        typeof body.currency === "string" && /^[A-Z]{3}$/.test(body.currency)
-          ? body.currency
-          : "USD";
+      const currency = typeof body.currency === "string" && /^[A-Z]{3}$/.test(body.currency) ? body.currency : "USD";
       windows.push(valueWindow("Balance", money(available, currency)));
       if (isRecord(body.spend) && body.spend.status === "available") {
-        windows.push(
-          valueWindow(
-            "Spent",
-            money(number(body.spend.total_cost, false, true), currency),
-          ),
-        );
+        windows.push(valueWindow("Spent", money(number(body.spend.total_cost, false, true), currency)));
       }
       base.blocked = available <= 0;
       return [
         {
           ...base,
-          blocked:
-            base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
+          blocked: base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
           windows,
         },
       ];

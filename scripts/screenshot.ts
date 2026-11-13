@@ -32,14 +32,30 @@ const screen = Buffer.from(await response.text(), "base64");
 if (screen.length !== COLUMNS * ROWS * 3) throw new Error(`expected ${COLUMNS * ROWS * 3} bytes, got ${screen.length}`);
 
 /** Whether a point lies inside a rounded rectangle. */
-function inside(x: number, y: number, left: number, top: number, width: number, height: number, radius: number): boolean {
+function inside(
+  x: number,
+  y: number,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  radius: number,
+): boolean {
   const dx = Math.max(left + radius - x, 0, x - (left + width - radius));
   const dy = Math.max(top + radius - y, 0, y - (top + height - radius));
   return dx * dx + dy * dy <= radius * radius;
 }
 
 /** The share of an image pixel a rounded rectangle covers. */
-function coverage(px: number, py: number, left: number, top: number, width: number, height: number, radius: number): number {
+function coverage(
+  px: number,
+  py: number,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  radius: number,
+): number {
   let hits = 0;
   for (let sy = 0; sy < SAMPLES; sy++) {
     for (let sx = 0; sx < SAMPLES; sx++) {

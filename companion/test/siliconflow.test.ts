@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { siliconflow } from "../src/providers/siliconflow.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -59,23 +55,15 @@ test("siliconflow: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    siliconflow.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(siliconflow.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("siliconflow: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       siliconflow.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -96,10 +84,7 @@ test("siliconflow: international origin and overdue balances", async () => {
   const [account] = await siliconflow.fetch(context);
   assert.equal(account.windows[0].value, "$-2.50");
   assert.equal(account.blocked, true);
-  assert.equal(
-    context.calls[0].url,
-    "https://api.siliconflow.com/v1/user/info",
-  );
+  assert.equal(context.calls[0].url, "https://api.siliconflow.com/v1/user/info");
 });
 
 test("siliconflow: rejects untrusted origins before sending credentials", async () => {
@@ -121,9 +106,7 @@ test("siliconflow: rejects untrusted origins before sending credentials", async 
 });
 
 test("siliconflow: body errors and malformed balances", async () => {
-  const [account] = await siliconflow.fetch(
-    fakeContext({ ...configured, responses: responses({ code: 30014 }) }),
-  );
+  const [account] = await siliconflow.fetch(fakeContext({ ...configured, responses: responses({ code: 30014 }) }));
   assert.equal(account.error, "sign in");
   for (const body of [
     { code: 20092 },
@@ -135,12 +118,7 @@ test("siliconflow: body errors and malformed balances", async () => {
       data: { totalBalance: 1, status: "unsafe status" },
     },
   ]) {
-    await assert.rejects(
-      siliconflow.fetch(
-        fakeContext({ ...configured, responses: responses(body) }),
-      ),
-      HttpError,
-    );
+    await assert.rejects(siliconflow.fetch(fakeContext({ ...configured, responses: responses(body) })), HttpError);
   }
 });
 
@@ -157,9 +135,7 @@ test("siliconflow: every request has a timeout and rejects redirects", async () 
 });
 
 test("siliconflow: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {
