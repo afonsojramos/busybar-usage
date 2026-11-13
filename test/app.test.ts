@@ -108,30 +108,62 @@ test("uppercase draws every label in capitals and fits the capitals", () => {
   assert.deepEqual(texts(frame), ["CLAUDE", "GMAIL", "7D", "2D"]);
 });
 
-test("with the bar's fonts, uppercase CLAUDE and COPILOT fit and the columns do not overlap", () => {
-  registerFontMaps(small);
-  registerFontMaps(tiny);
-  const frameOf = (provider: string) =>
-    accountFrame(
-      account({ provider, account: "gmail", windows: [{ name: "30d", usedPercent: 50, resetsAt: null, value: null }] }),
-      1000,
-      { measure: textWidth, uppercase: true },
-    );
-  assert.equal(texts(frameOf("copilot"))[0], "COPILOT");
-  const frame = frameOf("claude");
-  assert.deepEqual(texts(frame), ["CLAUDE", "GMAIL", "30D", "50%"]);
-  type Placed = { id: string; type: string; x?: number; width?: number; text?: string; font?: string };
-  const at = (id: string) => frame.find((element) => element.id === id) as Placed;
-  const left = (id: string) => at(id).x ?? 0;
-  const right = (id: string) => {
-    const element = at(id);
-    const width = element.type === "text" ? textWidth(element.text ?? "", element.font as "tiny" | "small") : (element.width ?? 0);
-    return left(id) + width;
+registerFontMaps(small);
+registerFontMaps(tiny);
+
+type Placed = { id: string; type: string; x?: number; width?: number; text?: string; font?: string; align?: string };
+
+/** The first and last columns an element lights; a text's advance ends in one blank column. */
+function ink(element: Placed): [number, number] {
+  const x = element.x ?? 0;
+  if (element.type !== "text") return [x, x + (element.width ?? 0) - 1];
+  const advance = textWidth(element.text ?? "", element.font as "tiny" | "small");
+  const left = element.align === "top_right" ? x - advance : x;
+  return [left, left + advance - 2];
+}
+
+/** Fails when an element runs off the screen or touches its neighbour on the same row. */
+function assertFits(frame: ReturnType<typeof accountFrame>, what: string): void {
+  const at = (id: string) => (frame as Placed[]).find((element) => element.id === id);
+  for (const element of frame as Placed[]) assert.ok(ink(element)[1] <= 71, `${what}: ${element.id} runs off the screen`);
+  for (const [row, label] of [[0, "provider"], [1, "account"]] as const) {
+    const line = [label, `w${row}_name`, `w${row}_box`, `w${row}_value`].flatMap((id) => at(id) ?? []);
+    for (let i = 1; i < line.length; i++) {
+      assert.ok(ink(line[i])[0] - ink(line[i - 1])[1] >= 2, `${what}: ${line[i - 1].id} touches ${line[i].id}`);
+    }
+  }
+}
+
+const percentWindow = (name: string, usedPercent: number) => ({ name, usedPercent, resetsAt: null, value: null });
+const valueOnly = (name: string, value: string) => ({ name, usedPercent: null, resetsAt: null, value });
+
+test("with the bar's fonts, nothing touches or runs off the screen, in either case", () => {
+  const pages = {
+    claude: account({ provider: "claude", account: "gmail", windows: [percentWindow("5h", 38), percentWindow("7d", 74)] }),
+    "copilot windows": account({ provider: "copilot", account: "gmail", windows: [percentWindow("Premium", 63), percentWindow("Chat", 12)] }),
+    "a wide window name": account({ provider: "gemini", account: "work", windows: [percentWindow("Monthly", 50), percentWindow("mem", 9)] }),
+    "copilot credits": account({ provider: "copilot", account: "gmail", windows: [valueOnly("Credits", "150.5 cr")] }),
+    "venice balance": account({ provider: "venice", account: "gmail", windows: [valueOnly("USD", "$1234.56")] }),
+    "copilot error": account({ provider: "copilot", account: "gmail", error: "plan ended" }),
+    "claude error": account({ provider: "claude", account: "gmail", error: "no access" }),
+    "no data": account({ provider: "copilot", account: "gmail" }),
+    "a full window without a reset time": account({ windows: [percentWindow("5h", 100), percentWindow("7d", 20)] }),
+    "a reset 400 days away": account({ windows: [{ name: "30d", usedPercent: 100, resetsAt: 1000 + 400 * 86400, value: null }] }),
+    "a long credit balance": account({ provider: "openrouter", account: "gmail", windows: [valueOnly("Credits", "1234567.8 cr")] }),
+    "a long hour balance": account({ provider: "openrouter", account: "gmail", windows: [valueOnly("Hours", "12,345.67 hc")] }),
   };
-  assert.ok(right("provider") <= left("w0_name"));
-  assert.ok(right("w0_name") <= left("w0_box"));
-  // The value is right-aligned to the screen's edge and can be as wide as "100%".
-  assert.ok(right("w0_box") <= 72 - textWidth("100%", "small"));
+  for (const uppercase of [false, true]) {
+    for (const [what, page] of Object.entries(pages)) {
+      assertFits(accountFrame(page, 1000, { measure: textWidth, uppercase }), `${what}${uppercase ? ", uppercase" : ""}`);
+    }
+  }
+});
+
+test("with the bar's fonts, uppercase CLAUDE and COPILOT fit", () => {
+  const frameOf = (provider: string) =>
+    accountFrame(account({ provider, account: "gmail", windows: [percentWindow("30d", 50)] }), 1000, { measure: textWidth, uppercase: true });
+  assert.equal(texts(frameOf("copilot"))[0], "COPILOT");
+  assert.deepEqual(texts(frameOf("claude")), ["CLAUDE", "GMAIL", "30D", "50%"]);
 });
 
 test("ids stay unique within a frame", () => {
