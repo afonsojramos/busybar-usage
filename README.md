@@ -1,10 +1,48 @@
-# AI Usage for BUSY Bar
+<p align="center">
+  <img src="docs/claude.png" width="560" alt="The bar showing Claude's 5-hour window at 38% and its weekly window at 74%" />
+</p>
 
-Shows how much of your AI subscriptions you have used on a [BUSY Bar](https://busy.app): one
-account per page, with a bar for each rate-limit window (Claude's 5-hour and weekly limits,
-Codex's weekly limit, and so on). A window at its limit shows the time until it resets.
+<h1 align="center">AI Usage for BUSY Bar</h1>
 
-It has two parts:
+<p align="center">
+  Shows how much of your AI subscriptions you have used on a <a href="https://busy.app">BUSY Bar</a>.<br>
+  One account per page, a bar for each rate-limit window, and the time until a full window resets.
+</p>
+
+<p align="center">
+  <a href="#install-the-app">Install</a> &middot; <a href="#run-the-companion">Companion</a> &middot; <a href="#supported-providers">Providers</a> &middot; <a href="#cliproxyapi-hub">Hub</a> &middot; <a href="#feed-format">Feed format</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/requires-Node%2024-339933" alt="Requires Node 24" />
+  <img src="https://img.shields.io/badge/BUSY%20Bar-firmware%201.4.1-e4002b" alt="BUSY Bar firmware 1.4.1" />
+  <img src="https://img.shields.io/badge/providers-113-d97757" alt="113 providers" />
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="docs/codex.png" width="400" alt="Codex with its 5-hour window full, showing 2h until it resets, and its weekly window at 91%" /><br>
+      <sub>A full window shows the time until it resets.</sub>
+    </td>
+    <td align="center">
+      <img src="docs/copilot-uppercase.png" width="400" alt="Copilot in capitals, with premium requests at 63% and chat at 12%" /><br>
+      <sub>The <b>Uppercase text</b> setting.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/venice.png" width="400" alt="Venice showing a USD balance of $12.40" /><br>
+      <sub>A balance with no limit shows its value.</sub>
+    </td>
+    <td align="center">
+      <img src="docs/gemini.png" width="400" alt="Gemini showing sign in in red" /><br>
+      <sub>An expired login shows "sign in".</sub>
+    </td>
+  </tr>
+</table>
+
+## How it works
 
 - **The bar app** (`src/`) runs on the BUSY Bar. It reads a usage feed from up to two places
   and merges them: the file the companion writes into the app's private storage, and an
@@ -171,6 +209,8 @@ nub run app:install
 Open **AI Usage** from the bar's APPS menu. Turn the wheel to change page, press OK to refresh,
 and press Back to leave.
 
+The **Uppercase text** setting draws every label in capitals.
+
 ## Run the companion
 
 ```sh
@@ -248,6 +288,9 @@ nub run test        # the app's tests, then the companion's
 The app runs in the bar's JerryScript runtime, not Node; see [AGENTS.md](AGENTS.md) for its
 lifecycle and resource rules. The companion's provider modules take a `Context` with files,
 Keychain and `fetch`, so each one is tested against fixtures without real logins.
+
+The images in this README are the bar's own screen. With the bar on USB,
+`node scripts/screenshot.ts docs/claude.png` saves what it shows.
 
 ## Credits
 
