@@ -1,0 +1,58 @@
+{
+  "virtual_key_name": "fixture-team",
+  "budgets": [
+    {
+      "id": "year",
+      "max_limit": 1000,
+      "current_usage": 100,
+      "reset_duration": "1Y"
+    },
+    {
+      "id": "month",
+      "max_limit": 125,
+      "current_usage": 42.17,
+      "reset_duration": "1M",
+      "last_reset": "2026-09-01T00:00:00Z",
+      "source_name": "Engineering",
+      "per_model_usage": [
+        {
+          "model": "gpt-4o",
+          "provider": "openai",
+          "total_cost": 5,
+          "total_tokens": 1200000
+        },
+        {
+          "model": "fixture-empty",
+          "provider": "openai",
+          "total_cost": 0,
+          "total_tokens": 0
+        }
+      ]
+    }
+  ],
+  "rate_limit": {
+    "id": "rl_1",
+    "token_max_limit": 1000000,
+    "token_current_usage": 345678,
+    "token_reset_duration": "1d",
+    "request_max_limit": 5000,
+    "request_current_usage": 120
+  },
+  "rate_limits": [
+    {
+      "id": "rl_1",
+      "token_max_limit": 1000000,
+      "token_current_usage": 345678,
+      "token_reset_duration": "1d",
+      "request_max_limit": 5000,
+      "request_current_usage": 120
+    },
+    {
+      "id": "rl_2",
+      "source_name": "Team pool",
+      "token_max_limit": 200000,
+      "token_current_usage": 100,
+      "request_reset_duration": "1h"
+    }
+  ]
+}
