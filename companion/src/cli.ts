@@ -25,7 +25,11 @@ Providers: ${providers.map((provider) => provider.id).join(", ")}`;
 const log = (message: string) => console.error(`${new Date().toISOString()} ${message}`);
 
 function options() {
+  const args = process.argv.slice(2);
+  // Package runners such as `nub run start -- --once` pass the "--" separator through.
+  if (args[0] === "--") args.shift();
   const { values } = parseArgs({
+    args,
     options: {
       host: { type: "string" },
       interval: { type: "string", default: "60" },
