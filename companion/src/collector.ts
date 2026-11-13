@@ -73,7 +73,9 @@ export class Collector {
     if (state.accounts.length > 0 && now - state.fetchedAt > KEEP_SECONDS) state.accounts = [];
     if (state.attempt) {
       if (now - state.attemptedAt < ABANDON_SECONDS) return state.attempt.done;
-      this.report(provider, state, "abandoned", "still running after 10 minutes; trying again");
+      // Its result is ignored if it ever arrives; the checks below decide when to try again.
+      state.attempt = null;
+      this.report(provider, state, "abandoned", "still running after 10 minutes; ignoring it");
     }
     if (now < state.retryAt) return null;
     const minimum = provider.minIntervalSeconds ?? 0;

@@ -121,6 +121,34 @@ test("a failed attempt still counts toward the minimum interval", async () => {
   assert.equal(provider.calls, 2);
 });
 
+test("an attempt still running after 10 minutes is ignored, and the minimum interval still holds", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  let release: (accounts: FeedAccount[]) => void = () => {};
+  let starts = 0;
+  const slow: Provider = {
+    id: "test",
+    name: "Test",
+    minIntervalSeconds: 3600,
+    fetch: () => {
+      starts += 1;
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    },
+  };
+  const logs: string[] = [];
+  const collector = new Collector([slow], context, (message) => logs.push(message), { waitMs: 20 });
+  await collector.collect();
+  now += 700;
+  await collector.collect();
+  release([account(42)]);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual((await collector.collect()).accounts, []);
+  assert.equal(starts, 1, "the minimum interval holds off a new attempt");
+  assert.deepEqual(logs, ["Test: still running after 10 minutes; ignoring it"]);
+});
+
 test("leaves out providers that are not set up", async () => {
   const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
   assert.deepEqual((await collector.collect()).accounts, []);
