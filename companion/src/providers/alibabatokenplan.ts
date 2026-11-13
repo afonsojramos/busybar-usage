@@ -167,6 +167,8 @@ async function cliWindows(context: Context, cn: boolean, personal: boolean): Pro
 }
 export const alibabatokenplan: Provider = {
   id: ID, name: NAME,
+  // Runs the bl CLI, possibly several pages of it; CodexBar refreshes about this often.
+  minIntervalSeconds: 300,
   async fetch(context) {
     const entry = await providerEntry(context, ID);
     const cn = typeof entry.region === "string" && entry.region.startsWith("cn");
