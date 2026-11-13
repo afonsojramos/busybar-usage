@@ -70,7 +70,9 @@ export class Collector {
     await Promise.all(this.providers.map((provider) => this.update(provider)));
     return {
       generated_at: new Date(this.context.now() * 1000).toISOString(),
-      accounts: this.providers.flatMap((provider) => this.states.get(provider.id)?.accounts ?? []),
+      accounts: this.providers.flatMap((provider) =>
+        (this.states.get(provider.id)?.accounts ?? []).map((account) => ({ ...account, provider_name: provider.name })),
+      ),
     };
   }
 }

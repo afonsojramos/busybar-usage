@@ -12,6 +12,8 @@ export interface UsageWindow {
 
 export interface Account {
   provider: string;
+  /** Display name from the feed, or null to capitalize `provider`. */
+  providerName: string | null;
   account: string;
   blocked: boolean;
   windows: UsageWindow[];
@@ -44,7 +46,7 @@ function parseWindow(value: unknown): UsageWindow | null {
 
 function parseAccount(value: unknown): Account | null {
   if (!isRecord(value)) return null;
-  const { provider, account, blocked, windows, observed_at, error } = value;
+  const { provider, provider_name, account, blocked, windows, observed_at, error } = value;
   if (typeof provider !== "string" || typeof account !== "string" || !Array.isArray(windows)) {
     return null;
   }
@@ -56,6 +58,7 @@ function parseAccount(value: unknown): Account | null {
   const observedAt = typeof observed_at === "string" ? Date.parse(observed_at) : NaN;
   return {
     provider,
+    providerName: typeof provider_name === "string" && provider_name !== "" ? provider_name : null,
     account,
     blocked: blocked === true,
     windows: parsed,
@@ -109,6 +112,7 @@ export function markStale(accounts: Account[], nowMs: number, maxAgeMs: number):
     account.observedAt > 0 && nowMs - account.observedAt > maxAgeMs
       ? {
           provider: account.provider,
+          providerName: account.providerName,
           account: account.account,
           blocked: account.blocked,
           windows: [],

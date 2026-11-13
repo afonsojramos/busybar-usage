@@ -108,7 +108,7 @@ export function accountFrame(account: Account, nowSeconds: number, measure: Meas
       type: "text",
       x: 0,
       y: ROW_Y[0],
-      text: fit(capitalize(account.provider), LABEL_WIDTH, measure),
+      text: fit(account.providerName ?? capitalize(account.provider), LABEL_WIDTH, measure),
       font: "tiny",
       color: PROVIDER_COLORS[account.provider] ?? "#FFFFFFFF",
     },

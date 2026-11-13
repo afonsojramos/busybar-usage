@@ -14,6 +14,8 @@ export interface FeedWindow {
 
 export interface FeedAccount {
   provider: string;
+  /** How the bar names the provider, such as "z.ai"; the bar capitalizes `provider` without it. */
+  provider_name?: string;
   /** A short, non-identifying label, such as the email domain's first label. */
   account: string;
   blocked: boolean;

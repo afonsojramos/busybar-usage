@@ -56,6 +56,7 @@ test("formats the time to a reset", () => {
 
 const account = (overrides: Partial<Account>): Account => ({
   provider: "claude",
+  providerName: null,
   account: "yld",
   blocked: false,
   windows: [],
@@ -83,6 +84,11 @@ test("a window without a percentage shows its value instead of a bar", () => {
 test("an error replaces the windows", () => {
   const frame = accountFrame(account({ error: "sign in", windows: [{ name: "5h", usedPercent: 5, resetsAt: null, value: null }] }), 1000, measure);
   assert.deepEqual(texts(frame), ["Claude", "yld", "sign in"]);
+});
+
+test("the feed's provider name wins over the id", () => {
+  const [parsed] = parseUsage(feed([{ ...hubAccount, provider: "zai", provider_name: "z.ai" }])) ?? [];
+  assert.equal(texts(accountFrame(parsed, 1000, measure))[0], "z.ai");
 });
 
 test("long names are cut to the column", () => {
