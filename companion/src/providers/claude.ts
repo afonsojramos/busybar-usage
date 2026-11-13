@@ -121,7 +121,7 @@ export const claude: Provider = {
 
     const windows = parseUsage(await response.json(), now);
     if (windows === null) throw new HttpError("Claude", response.status);
-    const blocked = windows.some((window) => window.used_percent >= 100);
+    const blocked = windows.some((window) => (window.used_percent ?? 0) >= 100);
     return [{ ...base, blocked, windows }];
   },
 };

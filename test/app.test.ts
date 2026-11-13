@@ -68,12 +68,20 @@ const texts = (elements: ReturnType<typeof accountFrame>) =>
   elements.flatMap((element) => (element.type === "text" ? [element.text] : []));
 
 test("a full window shows the time to its reset instead of 100%", () => {
-  const frame = accountFrame(account({ windows: [{ name: "7d", usedPercent: 100, resetsAt: 1000 + 3 * 3600 }] }), 1000, measure);
+  const frame = accountFrame(account({ windows: [{ name: "7d", usedPercent: 100, resetsAt: 1000 + 3 * 3600, value: null }] }), 1000, measure);
   assert.deepEqual(texts(frame), ["Claude", "yld", "7d", "3h"]);
 });
 
+test("a window without a percentage shows its value instead of a bar", () => {
+  const [parsed] = parseUsage(feed([{ ...hubAccount, windows: [{ name: "bal", minutes: null, used_percent: null, resets_at: null, value: "$12.40" }] }])) ?? [];
+  assert.equal(parsed.windows[0].value, "$12.40");
+  const frame = accountFrame(parsed, 1000, measure);
+  assert.deepEqual(texts(frame), ["Claude", "yld", "bal", "$12.40"]);
+  assert.equal(frame.filter((element) => element.type === "rectangle").length, 0);
+});
+
 test("an error replaces the windows", () => {
-  const frame = accountFrame(account({ error: "sign in", windows: [{ name: "5h", usedPercent: 5, resetsAt: null }] }), 1000, measure);
+  const frame = accountFrame(account({ error: "sign in", windows: [{ name: "5h", usedPercent: 5, resetsAt: null, value: null }] }), 1000, measure);
   assert.deepEqual(texts(frame), ["Claude", "yld", "sign in"]);
 });
 
@@ -84,7 +92,7 @@ test("long names are cut to the column", () => {
 
 test("ids stay unique within a frame", () => {
   const frame = accountFrame(
-    account({ windows: [{ name: "5h", usedPercent: 50, resetsAt: null }, { name: "7d", usedPercent: 95, resetsAt: null }] }),
+    account({ windows: [{ name: "5h", usedPercent: 50, resetsAt: null, value: null }, { name: "7d", usedPercent: 95, resetsAt: null, value: null }] }),
     1000,
     measure,
   );

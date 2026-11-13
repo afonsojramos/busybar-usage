@@ -4,9 +4,12 @@ export interface FeedWindow {
   /** Short label shown on the bar, such as "5h" or "7d". */
   name: string;
   minutes: number | null;
-  used_percent: number;
+  /** Null for a window that has no limit to measure against, such as a prepaid balance. */
+  used_percent: number | null;
   /** Unix seconds. */
   resets_at: number | null;
+  /** Text shown instead of a bar, such as "$12.40", when used_percent is null. */
+  value?: string;
 }
 
 export interface FeedAccount {
@@ -53,6 +56,11 @@ export function feedWindow(
 ): FeedWindow {
   const used = resetsAt !== null && resetsAt <= nowSeconds ? 0 : Math.max(0, Math.round(usedPercent));
   return { name, minutes, used_percent: used, resets_at: resetsAt };
+}
+
+/** A window with a value but no limit, such as a balance; the bar shows the text without a bar. */
+export function valueWindow(name: string, value: string, resetsAt: number | null = null): FeedWindow {
+  return { name, minutes: null, used_percent: null, resets_at: resetsAt, value };
 }
 
 /** Parses an ISO 8601 date to Unix seconds, or null. */

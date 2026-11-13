@@ -106,6 +106,6 @@ export const codex: Provider = {
 
     const windows = parseUsage(await response.json(), now);
     if (windows === null) throw new HttpError("Codex", response.status);
-    return [{ ...base, blocked: windows.some((window) => window.used_percent >= 100), windows }];
+    return [{ ...base, blocked: windows.some((window) => (window.used_percent ?? 0) >= 100), windows }];
   },
 };

@@ -48,6 +48,15 @@ nub run start -- --host 192.168.1.130   # the bar over Wi-Fi
 nub run start -- --print --once         # print the feed instead of sending it
 ```
 
+Providers that use an API key look for it, in order, in the provider's environment variable
+(such as `OPENROUTER_API_KEY`), in `~/.config/busybar-usage/config.json`, and in CodexBar's
+config (`~/.config/codexbar/config.json` or `~/.codexbar/config.json`), so a CodexBar setup
+works as it is. The companion's config looks like this; keep it private (`chmod 600`):
+
+```json
+{ "providers": { "openrouter": { "apiKey": "sk-or-..." } } }
+```
+
 It updates every minute until stopped. `--providers claude,codex` limits it to some providers;
 `--help` lists every option. If the bar has an HTTP access password, set
 `BUSYBAR_HTTP_PASSWORD`. The bar only shows the companion's numbers while it runs; keep it
@@ -82,7 +91,8 @@ bar shows the more recent measurement.
 
 `account` is a short, non-identifying label: the first part of the login's email domain
 (`gmail`, `yld`). `resets_at` is in Unix seconds. `error` is optional and replaces the windows
-on the bar.
+on the bar. A window with no limit to measure against, such as a prepaid balance, has
+`"used_percent": null` and a short `value` (`"$12.40"`) that the bar shows instead of a bar.
 
 ## Development
 

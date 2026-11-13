@@ -2,9 +2,12 @@
 export interface UsageWindow {
   /** Short name from the hub, such as "5h" or "7d". */
   name: string;
-  usedPercent: number;
+  /** Null when the window has no limit, such as a prepaid balance shown as text. */
+  usedPercent: number | null;
   /** Unix seconds, or null when the hub does not know. */
   resetsAt: number | null;
+  /** Text shown instead of a bar when there is no percentage. */
+  value: string | null;
 }
 
 export interface Account {
@@ -26,12 +29,16 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 function parseWindow(value: unknown): UsageWindow | null {
   if (!isRecord(value)) return null;
-  const { name, used_percent, resets_at } = value;
-  if (typeof name !== "string" || !isFiniteNumber(used_percent)) return null;
+  const { name, used_percent, resets_at, value: text } = value;
+  if (typeof name !== "string") return null;
+  const usedPercent = isFiniteNumber(used_percent) ? Math.max(0, used_percent) : null;
+  const shown = typeof text === "string" && text !== "" ? text.slice(0, 12) : null;
+  if (usedPercent === null && shown === null) return null;
   return {
     name,
-    usedPercent: Math.max(0, used_percent),
+    usedPercent,
     resetsAt: isFiniteNumber(resets_at) ? resets_at : null,
+    value: shown,
   };
 }
 
@@ -113,7 +120,8 @@ export function markStale(accounts: Account[], nowMs: number, maxAgeMs: number):
 }
 
 /** Applies resets the hub has not seen yet: a window past its reset time starts again from zero. */
-export function currentPercent(window: UsageWindow, nowSeconds: number): number {
+export function currentPercent(window: UsageWindow, nowSeconds: number): number | null {
+  if (window.usedPercent === null) return null;
   if (window.resetsAt !== null && window.resetsAt <= nowSeconds) return 0;
   return window.usedPercent;
 }
