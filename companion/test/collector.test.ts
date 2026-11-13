@@ -155,6 +155,22 @@ test("with no wait limit, a collection waits for every provider", async () => {
   assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 4);
 });
 
+test("a provider with a long minimum interval keeps its numbers through one failed attempt", async () => {
+  let now = NOW;
+  const context = { ...fakeContext({}), now: () => now };
+  const provider = scripted([[account(3)], new Error("boom"), new Error("boom")]);
+  provider.minIntervalSeconds = 3600;
+  const collector = new Collector([provider], context, () => {});
+  await collector.collect();
+  now += 3600;
+  await collector.collect();
+  now += 60;
+  assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 3, "kept after the failed attempt");
+  now += 3600;
+  assert.deepEqual((await collector.collect()).accounts, [], "dropped after a second interval");
+  assert.equal(provider.calls, 3);
+});
+
 test("leaves out providers that are not set up", async () => {
   const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
   assert.deepEqual((await collector.collect()).accounts, []);

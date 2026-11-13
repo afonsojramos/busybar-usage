@@ -3,7 +3,7 @@ import { HttpError, NotConfigured, RateLimited, type Context, type Provider } fr
 
 /** After an unexpected failure, wait this long before asking that provider again. */
 const ERROR_BACKOFF_SECONDS = 300;
-/** Last good numbers are kept through failures for this long, then dropped. */
+/** Last good numbers are kept through failures for this long, or two minimum intervals, then dropped. */
 const KEEP_SECONDS = 3600;
 /** An attempt still running after this is abandoned, so a stuck provider gets another try. */
 const ABANDON_SECONDS = 600;
@@ -70,7 +70,10 @@ export class Collector {
   private update(provider: Provider): Promise<void> | null {
     const now = this.context.now();
     const state = this.stateFor(provider);
-    if (state.accounts.length > 0 && now - state.fetchedAt > KEEP_SECONDS) state.accounts = [];
+    const minimum = provider.minIntervalSeconds ?? 0;
+    // Two intervals, so a provider that is asked rarely keeps its numbers through one failed attempt.
+    const keep = Math.max(KEEP_SECONDS, 2 * minimum);
+    if (state.accounts.length > 0 && now - state.fetchedAt > keep) state.accounts = [];
     if (state.attempt) {
       if (now - state.attemptedAt < ABANDON_SECONDS) return state.attempt.done;
       // Its result is ignored if it ever arrives; the checks below decide when to try again.
@@ -78,7 +81,6 @@ export class Collector {
       this.report(provider, state, "abandoned", "still running after 10 minutes; ignoring it");
     }
     if (now < state.retryAt) return null;
-    const minimum = provider.minIntervalSeconds ?? 0;
     if (minimum > 0 && state.attemptedAt > 0 && now - state.attemptedAt < minimum) return null;
 
     const id = ++this.attempts;
