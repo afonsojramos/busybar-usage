@@ -49,6 +49,21 @@ test("StepFun logs in with credentials using CodexBar's three steps", async () =
   assert.match(c.calls[2]?.url ?? "", /SignInByPassword$/);
   assert.match(c.calls[3]?.headers.cookie ?? "", /Oasis-Token=fake-access\.\.\.fake-refresh/);
 });
+test("StepFun keeps a password-login token for the run and logs in again once it is rejected", async () => {
+  const c = fakeContext({ env: { STEPFUN_USERNAME: "fake@example.com", STEPFUN_PASSWORD: "fake-password" }, responses: [
+    new Response("", { headers: { "set-cookie": "INGRESSCOOKIE=fake-ingress; Path=/" } }),
+    json({ accessToken: { raw: "fake-anon" } }), json({ accessToken: { raw: "fake-access" }, refreshToken: { raw: "fake-refresh" } }), json(usage),
+    json(usage), json({}, 401),
+    new Response("", { headers: { "set-cookie": "INGRESSCOOKIE=fake-ingress; Path=/" } }),
+    json({ accessToken: { raw: "fake-anon" } }), json({ accessToken: { raw: "fake-access-2" }, refreshToken: { raw: "fake-refresh" } }), json(usage),
+  ] });
+  await stepfun.fetch(c);
+  await stepfun.fetch(c);
+  assert.equal(c.calls.length, 5, "the second poll reuses the session");
+  assert.equal((await stepfun.fetch(c))[0]?.error, "sign in");
+  await stepfun.fetch(c);
+  assert.match(c.calls.at(-1)?.headers.cookie ?? "", /Oasis-Token=fake-access-2/);
+});
 test("StepFun reads CodexBar region token and cookie off", async () => {
   const file = "/home/test/.config/codexbar/config.json";
   const c = fakeContext({ files: { [file]: JSON.stringify({ providers: [{ id: "stepfun", region: "fake-region-token" }] }) }, responses: [json(usage)] });

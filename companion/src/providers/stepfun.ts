@@ -73,6 +73,22 @@ function tokenPair(body: unknown): string {
   if (typeof access !== "string" || !access) throw new HttpError("StepFun", 200);
   return access + (typeof refresh === "string" && refresh ? "..." + refresh : "");
 }
+/** Tokens from a password login, kept for the run so each poll does not open a new session. */
+const sessions = new WeakMap<Context, Map<string, string>>();
+
+async function cachedLogin(context: Context, username: string, password: string): Promise<string> {
+  let cache = sessions.get(context);
+  if (!cache) {
+    cache = new Map();
+    sessions.set(context, cache);
+  }
+  const existing = cache.get(username);
+  if (existing) return existing;
+  const token = await login(context, username, password);
+  cache.set(username, token);
+  return token;
+}
+
 async function login(context: Context, username: string, password: string): Promise<string> {
   const home = await request(context, "", { headers: HEADERS });
   const ingress = home.headers.getSetCookie().map((c) => /(?:^|\s)INGRESSCOOKIE=([^;]+)/.exec(c)?.[1]).find(Boolean);
@@ -105,12 +121,12 @@ export const stepfun: Provider = {
         token = await cookieHeader(context, "stepfun", { domains: [], envNames: [] });
       } else if (settingsUser && settingsPassword) {
         base.account = accountLabel(settingsUser);
-        token = await login(context, settingsUser, settingsPassword);
+        token = await cachedLogin(context, settingsUser, settingsPassword);
       } else {
         token = await cookieHeader(context, "stepfun", { domains: [], envNames: ["STEPFUN_TOKEN"] });
         if (!token && context.env.STEPFUN_USERNAME?.trim() && context.env.STEPFUN_PASSWORD?.trim()) {
           base.account = accountLabel(context.env.STEPFUN_USERNAME.trim());
-          token = await login(context, context.env.STEPFUN_USERNAME.trim(), context.env.STEPFUN_PASSWORD.trim());
+          token = await cachedLogin(context, context.env.STEPFUN_USERNAME.trim(), context.env.STEPFUN_PASSWORD.trim());
         }
       }
       if (!token) throw new NotConfigured("StepFun");
@@ -124,7 +140,11 @@ export const stepfun: Provider = {
       const windows = parseUsage(body, now);
       return [{ ...base, windows, blocked: windows.some((w) => (w.used_percent ?? 0) >= 100) }];
     } catch (error) {
-      if (error instanceof SignIn) return [{ ...base, error: "sign in" }];
+      if (error instanceof SignIn) {
+        // A rejected session token is dropped so the next poll logs in again.
+        sessions.delete(context);
+        return [{ ...base, error: "sign in" }];
+      }
       throw error;
     }
   },
