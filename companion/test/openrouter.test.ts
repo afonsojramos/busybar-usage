@@ -100,9 +100,9 @@ test("OpenRouter: uncapped keys keep balance without inventing a quota",async ()
 });
 
 test("OpenRouter: optional identifying headers and HTTPS override",async () => {
-  const context = fakeContext({env:{...env,OPENROUTER_API_URL:"proxy.example/api/v1/",OPENROUTER_HTTP_REFERER:"https://client.example",OPENROUTER_X_TITLE:"Usage"},responses:responses()});
+  const context = fakeContext({env:{...env,OPENROUTER_API_URL:"openrouter.ai/api/v1/",OPENROUTER_HTTP_REFERER:"https://client.example",OPENROUTER_X_TITLE:"Usage"},responses:responses()});
   await openrouter.fetch(context);
-  assert.equal(context.calls[0].url,"https://proxy.example/api/v1/credits");
+  assert.equal(context.calls[0].url,"https://openrouter.ai/api/v1/credits");
   assert.equal(context.calls[0].headers["http-referer"],"https://client.example");
   assert.equal(context.calls[0].headers["x-title"],"Usage");
 });
@@ -150,7 +150,7 @@ for (const name of ["TypeError", "TimeoutError", "AbortError"]) {
   });
 }
 
-for (const endpoint of ["http://example.com", "https://name:password@example.com", "https://example.com?secret=value"]) {
+for (const endpoint of ["https://example.com", "http://openrouter.ai", "https://name:password@openrouter.ai", "https://openrouter.ai?secret=value"]) {
   test("openrouter: rejects invalid endpoint overrides before sending credentials", async () => {
     const context = fakeContext({ env: { ...env, OPENROUTER_API_URL: endpoint } });
     await assert.rejects(openrouter.fetch(context), HttpError);

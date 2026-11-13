@@ -1,5 +1,5 @@
 import type { Feed, FeedAccount } from "./feed.ts";
-import { NotConfigured, RateLimited, type Context, type Provider } from "./providers/types.ts";
+import { HttpError, NotConfigured, RateLimited, type Context, type Provider } from "./providers/types.ts";
 
 /** After an unexpected failure, wait this long before asking that provider again. */
 const ERROR_BACKOFF_SECONDS = 300;
@@ -60,7 +60,9 @@ export class Collector {
         this.report(provider, state, "rate-limited", "rate-limited, keeping the last numbers");
       } else {
         state.retryAt = now + ERROR_BACKOFF_SECONDS;
-        const message = error instanceof Error ? error.message : String(error);
+        // Only our own errors are safe to log: a fetch error can quote a header that holds a key.
+        const message =
+          error instanceof HttpError ? error.message : `request failed (${error instanceof Error ? error.name : "error"})`;
         this.report(provider, state, `failed:${message}`, `${message}; keeping the last numbers`);
       }
     }

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { accountLabel, feedWindow, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider, isProviderHost } from "./types.ts";
 
 type Region = "global" | "bigmodel-cn";
 interface Settings {
@@ -20,9 +20,10 @@ function text(value: unknown): string | null {
 function endpoint(raw: string): URL {
   try {
     const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
-    if (url.protocol === "https:" && url.hostname && !url.username && !url.password && !url.hash) return url;
+    const hosts = ["api.z.ai", "open.bigmodel.cn", "bigmodel.cn", "www.bigmodel.cn"];
+    if (isProviderHost(url, hosts) && !url.username && !url.password && !url.hash) return url;
   } catch {}
-  throw new Error("z.ai endpoint must be a valid HTTPS URL");
+  throw new Error("z.ai endpoint must be an HTTPS URL on a z.ai or BigModel host");
 }
 
 async function configEntry(context: Context): Promise<Record<string, unknown>> {

@@ -8,7 +8,7 @@ function percent(snapshot: unknown): number | null {
   const remaining = finiteNumber(snapshot.remaining);
   if (entitlement === 0 && remaining === 0) return null;
   const left = finiteNumber(snapshot.percent_remaining) ?? (entitlement !== null && entitlement > 0 && remaining !== null ? remaining / entitlement * 100 : null);
-  return left === null ? null : Math.max(0, 100 - left);
+  return left === null ? null : Math.min(100, Math.max(0, 100 - left));
 }
 
 export function parseUsage(body: unknown, now: number): FeedWindow[] | null {

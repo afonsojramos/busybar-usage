@@ -3,7 +3,7 @@ import { arch, hostname, release } from "node:os";
 import { join } from "node:path";
 import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, windowName, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider, isProviderHost } from "./types.ts";
 
 function parseJSON(text: string | null): unknown {
   try { return text === null ? null : JSON.parse(text); } catch { return null; }
@@ -27,7 +27,7 @@ async function international(context: Context): Promise<boolean> {
 function endpoint(raw: string): string {
   let url: URL;
   try { url = new URL(raw); } catch { throw new HttpError("Kimi", 0); }
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+  if (!isProviderHost(url, ["api.kimi.com", "api.kimi.ai"]) || url.username || url.password || url.search || url.hash) {
     throw new HttpError("Kimi", 0);
   }
   const path = url.pathname.replace(/\/+$/, "");

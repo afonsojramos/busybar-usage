@@ -53,6 +53,14 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Whether an endpoint override may receive this provider's credential: HTTPS on one of the
+ * provider's own hosts, so a stray override cannot send a key elsewhere.
+ */
+export function isProviderHost(url: URL, hosts: readonly string[]): boolean {
+  return url.protocol === "https:" && hosts.includes(url.hostname) && url.port === "";
+}
+
 /** Seconds from a Retry-After header, or a default. */
 export function retryAfterSeconds(headers: Headers, fallback: number): number {
   const value = headers.get("retry-after");

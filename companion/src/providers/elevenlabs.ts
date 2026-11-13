@@ -1,13 +1,13 @@
 import { accountLabel, feedWindow, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider, isProviderHost } from "./types.ts";
 
 
 function apiBase(raw: string | undefined, fallback: string): string {
   try {
     const text = raw?.trim() || fallback;
     const url = new URL(text.includes("://") ? text : `https://${text}`);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error();
+    if (!isProviderHost(url, ["api.elevenlabs.io"]) || url.username || url.password || url.search || url.hash) throw new Error();
     return url.href.replace(/\/+$/, "");
   } catch {
     throw new HttpError("ElevenLabs", 0);

@@ -44,7 +44,7 @@ test("keeps the last numbers through a failure, backs off, and logs each change 
   assert.equal(provider.calls, 2, "waits out the backoff");
   now += 300;
   assert.equal((await collector.collect()).accounts[0].windows[0].used_percent, 20);
-  assert.deepEqual(logs, ["Test: updated", "Test: boom; keeping the last numbers", "Test: updated"]);
+  assert.deepEqual(logs, ["Test: updated", "Test: request failed (Error); keeping the last numbers", "Test: updated"]);
 });
 
 test("waits for a rate limit to pass", async () => {

@@ -1,6 +1,5 @@
-import { join } from "node:path";
 import { accountLabel, finiteNumber, isRecord, valueWindow, type FeedAccount } from "../feed.ts";
-import { apiKey, companionConfigPath } from "../keys.ts";
+import { resolveKey, type ResolvedKey } from "../keys.ts";
 import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
 
 function amount(value: number, prefix = "$"): string {
@@ -8,34 +7,17 @@ function amount(value: number, prefix = "$"): string {
   return fixed.length <= 12 ? fixed : `${prefix}${value.toExponential(2)}`;
 }
 
-async function keyRegion(context: Context): Promise<string> {
+/** The host region for a key; a saved CodexBar key stays on the region it was saved for. */
+function keyRegion(context: Context, resolved: ResolvedKey): string {
   const selected = context.env.MOONSHOT_REGION?.trim().replace(/^["']|["']$/g, "").toLowerCase();
   const fallback = selected === "china" ? "china" : "international";
-  if ([context.env.MOONSHOT_API_KEY, context.env.MOONSHOT_KEY].some((key) => key?.trim())) return fallback;
-  async function read(path: string): Promise<unknown> {
-    const text = await context.readFile(path);
-    try { return text === null ? null : JSON.parse(text); } catch { return null; }
-  }
-  const companion = await read(companionConfigPath(context));
-  const providers = isRecord(companion) && isRecord(companion.providers) ? companion.providers : null;
-  const own = providers?.moonshot;
-  if (isRecord(own) && typeof own.apiKey === "string" && own.apiKey.trim()) return fallback;
-  const configHome = context.env.XDG_CONFIG_HOME || join(context.home, ".config");
-  const paths = context.env.CODEXBAR_CONFIG ? [context.env.CODEXBAR_CONFIG]
-    : [join(configHome, "codexbar/config.json"), join(context.home, ".codexbar/config.json")];
-  for (const path of paths) {
-    const config = await read(path);
-    if (config === null) continue;
-    const entries = isRecord(config) && Array.isArray(config.providers) ? config.providers : [];
-    const entry: unknown = entries.find((value: unknown) => isRecord(value) && value.id === "moonshot");
-    if (!isRecord(entry)) return fallback;
-    const bound = entry.apiKeyRegion ?? entry.region ?? "international";
-    const region = selected ?? entry.region ?? bound;
-    // Saved regional keys must never cross Moonshot hosts.
-    if ((region !== "international" && region !== "china") || region !== bound) throw new NotConfigured("Moonshot");
-    return region;
-  }
-  return fallback;
+  if (resolved.source !== "codexbar" || resolved.entry === null) return fallback;
+  const entry = resolved.entry;
+  const bound = entry.apiKeyRegion ?? entry.region ?? "international";
+  const region = selected ?? entry.region ?? bound;
+  // Saved regional keys must never cross Moonshot hosts.
+  if ((region !== "international" && region !== "china") || region !== bound) throw new NotConfigured("Moonshot");
+  return region;
 }
 
 const SIGN_IN = Symbol("sign in");
@@ -44,8 +26,9 @@ export const moonshot: Provider = {
   id: "moonshot",
   name: "Moonshot",
   async fetch(context): Promise<FeedAccount[]> {
-    const key = await apiKey(context, "moonshot", ["MOONSHOT_API_KEY", "MOONSHOT_KEY"]);
-    if (!key) throw new NotConfigured("Moonshot");
+    const resolved = await resolveKey(context, "moonshot", ["MOONSHOT_API_KEY", "MOONSHOT_KEY"]);
+    if (!resolved) throw new NotConfigured("Moonshot");
+    const key = resolved.key;
     const now = context.now();
     const base: FeedAccount = {
       provider: "moonshot", account: accountLabel(null), blocked: false,
@@ -65,7 +48,7 @@ export const moonshot: Provider = {
         throw new HttpError("Moonshot", response.status);
       }
     }
-    const region = await keyRegion(context);
+    const region = keyRegion(context, resolved);
     const china = region === "china";
     const data = await request(`https://api.moonshot.${china ? "cn" : "ai"}/v1/users/me/balance`);
     if (data === SIGN_IN) return [{ ...base, error: "sign in" }];

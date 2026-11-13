@@ -27,11 +27,20 @@ async function readJson(context: Context, path: string): Promise<unknown> {
 const nonEmpty = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 
-async function fromCompanionConfig(context: Context, providerId: string): Promise<string | null> {
+export interface ResolvedKey {
+  key: string;
+  /** Where the key came from. */
+  source: "env" | "companion" | "codexbar";
+  /** The config entry the key came from, read in the same pass, or null for an environment variable. */
+  entry: Record<string, unknown> | null;
+}
+
+async function fromCompanionConfig(context: Context, providerId: string): Promise<ResolvedKey | null> {
   const config = await readJson(context, companionConfigPath(context));
   const providers = isRecord(config) ? config.providers : null;
   const entry = isRecord(providers) ? providers[providerId] : null;
-  return isRecord(entry) ? nonEmpty(entry.apiKey) : null;
+  const key = isRecord(entry) ? nonEmpty(entry.apiKey) : null;
+  return key && isRecord(entry) ? { key, source: "companion", entry } : null;
 }
 
 /** The CodexBar config files in the order CodexBar itself prefers them. */
@@ -40,7 +49,7 @@ function codexBarConfigPaths(context: Context): string[] {
   return [join(configHome(context), "codexbar", "config.json"), join(context.home, ".codexbar", "config.json")];
 }
 
-async function fromCodexBarConfig(context: Context, providerId: string): Promise<string | null> {
+async function fromCodexBarConfig(context: Context, providerId: string): Promise<ResolvedKey | null> {
   for (const path of codexBarConfigPaths(context)) {
     const config = await readJson(context, path);
     if (config === null) continue;
@@ -48,22 +57,28 @@ async function fromCodexBarConfig(context: Context, providerId: string): Promise
     const entry = providers.find((provider) => isRecord(provider) && provider.id === providerId);
     if (!isRecord(entry)) return null;
     const direct = nonEmpty(entry.apiKey);
-    if (direct) return direct;
+    if (direct) return { key: direct, source: "codexbar", entry };
     // A selected token account, as CodexBar uses for providers with several keys.
     const accounts = isRecord(entry.tokenAccounts) ? entry.tokenAccounts : null;
     const list = accounts && Array.isArray(accounts.accounts) ? accounts.accounts : [];
     const index = typeof accounts?.activeIndex === "number" ? accounts.activeIndex : 0;
     const selected = list[index];
-    return isRecord(selected) ? nonEmpty(selected.token) : null;
+    const token = isRecord(selected) ? nonEmpty(selected.token) : null;
+    return token ? { key: token, source: "codexbar", entry } : null;
   }
   return null;
 }
 
-/** The API key for a provider, or null when none is set anywhere. */
-export async function apiKey(context: Context, providerId: string, envNames: string[]): Promise<string | null> {
+/** The API key for a provider with where it came from, or null when none is set anywhere. */
+export async function resolveKey(context: Context, providerId: string, envNames: string[]): Promise<ResolvedKey | null> {
   for (const name of envNames) {
     const value = nonEmpty(context.env[name]);
-    if (value) return value;
+    if (value) return { key: value, source: "env", entry: null };
   }
   return (await fromCompanionConfig(context, providerId)) ?? (await fromCodexBarConfig(context, providerId));
+}
+
+/** The API key for a provider, or null when none is set anywhere. */
+export async function apiKey(context: Context, providerId: string, envNames: string[]): Promise<string | null> {
+  return (await resolveKey(context, providerId, envNames))?.key ?? null;
 }

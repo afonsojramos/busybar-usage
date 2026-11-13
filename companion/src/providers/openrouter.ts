@@ -1,6 +1,6 @@
 import { accountLabel, feedWindow, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider, isProviderHost } from "./types.ts";
 
 function amount(value: number, prefix = "$"): string {
   const fixed = `${prefix}${value.toFixed(2)}`;
@@ -11,7 +11,7 @@ function apiBase(raw: string | undefined, fallback: string): string {
   try {
     const text = raw?.trim() || fallback;
     const url = new URL(text.includes("://") ? text : `https://${text}`);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error();
+    if (!isProviderHost(url, ["openrouter.ai"]) || url.username || url.password || url.search || url.hash) throw new Error();
     return url.href.replace(/\/+$/, "");
   } catch {
     throw new HttpError("OpenRouter", 0);

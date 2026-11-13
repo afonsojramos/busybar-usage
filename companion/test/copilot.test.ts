@@ -27,8 +27,8 @@ for (const status of [401, 403, 429, 500]) {
     else await assert.rejects(copilot.fetch(context), (e: unknown) => status === 429 ? e instanceof RateLimited && e.until === NOW + 120 : e instanceof HttpError);
   });
 }
-test("Copilot derives percentages and preserves over-quota", () => {
-  assert.equal(parseUsage({ quota_snapshots: { premium_interactions: { entitlement: "300", remaining: "-30" } } }, NOW)?.[0].used_percent, 110);
+test("Copilot derives percentages and caps over-quota at 100", () => {
+  assert.equal(parseUsage({ quota_snapshots: { premium_interactions: { entitlement: "300", remaining: "-30" } } }, NOW)?.[0].used_percent, 100);
 });
 test("Copilot monthly/limited fallback", () => {
   assert.deepEqual(parseUsage({ monthly_quotas: { completions: 2000, chat: 50 }, limited_user_quotas: { completions: 1000, chat: 0 } }, NOW)?.map((w) => w.used_percent), [50, 100]);

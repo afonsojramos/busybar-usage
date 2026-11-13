@@ -104,11 +104,11 @@ test("Kimi API key wins over CLI and uses saved international region", async () 
 
 test("Kimi key supports HTTPS endpoint paths and rejects unsafe overrides", async () => {
   for (const path of ["", "/coding", "/coding/v1"]) {
-    const context = fakeContext({ env: { ...env, KIMI_CODE_BASE_URL: `https://example.org${path}` }, responses: [json(legacy)] });
+    const context = fakeContext({ env: { ...env, KIMI_CODE_BASE_URL: `https://api.kimi.ai${path}` }, responses: [json(legacy)] });
     await kimi.fetch(context);
-    assert.equal(context.calls[0].url, "https://example.org/coding/v1/usages");
+    assert.equal(context.calls[0].url, "https://api.kimi.ai/coding/v1/usages");
   }
-  for (const url of ["http://example.org", "https://fake:secret@example.org", "invalid", "https://example.org?x=1"]) {
+  for (const url of ["https://example.org", "http://api.kimi.com", "https://fake:secret@api.kimi.com", "invalid", "https://api.kimi.com?x=1"]) {
     await assert.rejects(kimi.fetch(fakeContext({ env: { ...env, KIMI_CODE_BASE_URL: url } })), HttpError);
   }
 });

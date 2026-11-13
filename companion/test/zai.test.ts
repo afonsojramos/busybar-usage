@@ -79,10 +79,10 @@ test("z.ai API key order and config token account team headers", async () => {
     files: { [configPath]: config({ region: "bigmodel-cn", tokenAccounts: { activeIndex: 1, accounts: [
       { token: "fake-unused" }, { token: "fake-team", usageScope: "team", organizationId: "org-fixture", workspaceID: "project-fixture" },
     ] } }) },
-    env: { Z_AI_QUOTA_URL: "proxy.test/quota?keep=1&type=9" }, responses: [json(usage)],
+    env: { Z_AI_QUOTA_URL: "open.bigmodel.cn/quota?keep=1&type=9" }, responses: [json(usage)],
   });
   await zai.fetch(context);
-  assert.equal(context.calls[0].url, "https://proxy.test/quota?keep=1&type=2");
+  assert.equal(context.calls[0].url, "https://open.bigmodel.cn/quota?keep=1&type=2");
   assert.equal(context.calls[0].headers["bigmodel-organization"], "org-fixture");
   assert.equal(context.calls[0].headers["bigmodel-project"], "project-fixture");
   assert.equal(context.calls[0].headers.authorization, "Bearer fake-team");
@@ -110,10 +110,14 @@ test("z.ai rejects config region mismatch and incomplete team selectors", async 
   }
 });
 
+test("z.ai rejects an override on another host", async () => {
+  await assert.rejects(zai.fetch(fakeContext({ env: { ...env, Z_AI_QUOTA_URL: "https://proxy.test/quota" } })));
+});
+
 test("z.ai higher-priority quota URL ignores stale host", async () => {
-  const context = fakeContext({ env: { ...env, Z_AI_QUOTA_URL: "proxy.test/quota", Z_AI_API_HOST: "http://stale.test" }, responses: [json(usage)] });
+  const context = fakeContext({ env: { ...env, Z_AI_QUOTA_URL: "api.z.ai/quota", Z_AI_API_HOST: "http://stale.test" }, responses: [json(usage)] });
   await zai.fetch(context);
-  assert.equal(context.calls[0].url, "https://proxy.test/quota");
+  assert.equal(context.calls[0].url, "https://api.z.ai/quota");
 });
 
 const noPlan = { code: 500, success: false, msg: "当前用户不存在coding plan" };
