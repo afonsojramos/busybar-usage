@@ -1,6 +1,6 @@
 import { accountLabel, feedWindow, isRecord, valueWindow, type FeedAccount } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider, type RequestOptions } from "./types.ts";
 
 function amount(value: number, prefix = "$"): string {
   const fixed = `${prefix}${value.toFixed(2)}`;
@@ -21,7 +21,7 @@ export const deepinfra: Provider = {
       observed_at: new Date(now * 1000).toISOString(), windows: [],
     };
     const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: "application/json" };
-    async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+    async function request(url: string, init: RequestOptions = {}): Promise<unknown> {
       const response = await context.fetch(url, {
         ...init, headers: { ...headers, ...init.headers }, signal: AbortSignal.timeout(30_000),
       });

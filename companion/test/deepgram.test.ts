@@ -24,7 +24,10 @@ const payloads = [
     ],
   },
 ];
-const env = { DEEPGRAM_API_KEY: "fixture-key", ...{ DEEPGRAM_PROJECT_ID: "project-123" } };
+const env = ({
+	DEEPGRAM_API_KEY: 'fixture-key',
+	DEEPGRAM_PROJECT_ID: 'project-123'
+});
 
 test("deepgram: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

@@ -16,7 +16,7 @@ const payloads = [
     },
   },
 ];
-const env = { ZENMUX_MANAGEMENT_API_KEY: "fixture-key", ...{} };
+const env = ({ ZENMUX_MANAGEMENT_API_KEY: 'fixture-key' });
 
 test("zenmux: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

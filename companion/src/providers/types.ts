@@ -33,6 +33,9 @@ export interface Context {
 
 export type SqliteValue = string | number | bigint | null | Uint8Array;
 
+/** Request options whose headers are a plain object, so a helper can spread them into its own. */
+export type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, string> };
+
 export interface RunOptions {
   /** Default 30 s; the process is killed after it. */
   timeoutMs?: number;

@@ -29,7 +29,7 @@ const payloads = [
     has_more: false,
   },
 ];
-const env = { OPENAI_ADMIN_KEY: "fixture-key", ...{} };
+const env = ({ OPENAI_ADMIN_KEY: 'fixture-key' });
 
 test("openai: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

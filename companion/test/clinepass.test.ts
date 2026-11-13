@@ -17,7 +17,7 @@ const payloads = [
     },
   },
 ];
-const env = { CLINE_API_KEY: "fixture-key", ...{} };
+const env = ({ CLINE_API_KEY: 'fixture-key' });
 
 test("clinepass: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

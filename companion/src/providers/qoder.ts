@@ -68,7 +68,7 @@ function curlTokens(raw: string): string[] {
       }
       invalidCapture();
     }
-    if (quote !== "'" && (char === "`" || (char === "$" && next && /['"({[\w*@#?$!\-]/.test(next)))) {
+    if (quote !== "'" && (char === "`" || (char === "$" && next && /['"({[\w*@#?$!-]/.test(next)))) {
       invalidCapture();
     }
     if (quote !== null) {

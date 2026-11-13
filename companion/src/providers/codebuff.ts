@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider, isProviderHost } from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider, isProviderHost, type RequestOptions } from "./types.ts";
 
 
 function apiBase(raw: string | undefined, fallback: string): string {
@@ -56,7 +56,7 @@ export const codebuff: Provider = {
       observed_at: new Date(now * 1000).toISOString(), windows: [],
     };
     const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: "application/json" };
-    async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+    async function request(url: string, init: RequestOptions = {}): Promise<unknown> {
       const response = await context.fetch(url, {
         ...init, headers: { ...headers, ...init.headers }, signal: AbortSignal.timeout(30_000),
       });

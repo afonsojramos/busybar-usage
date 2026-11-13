@@ -39,7 +39,7 @@ function endpoint(raw: string | null, policy: "private" | "loopback" | "https" =
   let url: URL;
   try { url = new URL(raw.includes("://") ? raw : `https://${raw}`); }
   catch { throw new NotConfigured(NAME); }
-  const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || /^127\./.test(url.hostname);
+  const loopback = url.hostname === "localhost" || url.hostname === "[::1]" || url.hostname.startsWith('127.');
   const http = url.protocol === "http:" && (policy === "private" ? privateHost(url.hostname)
     : policy === "loopback" && loopback);
   if ((url.protocol !== "https:" && !http) || url.username || url.password) throw new NotConfigured(NAME);

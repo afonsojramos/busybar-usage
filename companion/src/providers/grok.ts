@@ -131,13 +131,9 @@ export const grok: Provider = {
     if ([401, 403].includes(response.status) || ["16", "7"].includes(response.headers.get("grpc-status") ?? "")) throw new HttpError("Grok", 401);
     if (response.status === 429) throw new RateLimited("Grok", now + retryAfterSeconds(response.headers, 300));
     if (!response.ok) throw new HttpError("Grok", response.status);
-    try {
-      const windows = parseGrokWeb(new Uint8Array(await response.arrayBuffer()), now);
-      if (!windows) throw new HttpError("Grok", response.status);
-      return windows;
-    } catch (error) {
-      throw error;
-    }
+    const windows = parseGrokWeb(new Uint8Array(await response.arrayBuffer()), now);
+    if (!windows) throw new HttpError("Grok", response.status);
+    return windows;
     }
     const input = [
       { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1", clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false } } },

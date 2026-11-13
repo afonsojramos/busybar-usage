@@ -108,7 +108,7 @@ async function legacy(context: Context, cookie: string, id: string): Promise<Fee
   const read = (key: string): number | null => isRecord(customer) ? finiteNumber(customer[key])
     : finiteNumber(new RegExp(`${key}\\s*:\\s*(?:\\$R\\[\\d+\\]=)?(-?\\d+(?:\\.\\d+)?)`).exec(raw)?.[1]);
   const used = read("monthlyUsage"), limit = read("monthlyLimit"), balance = read("balance");
-  if (used === null || (customer && customer.subscription !== null && customer.subscription !== undefined) || (!customer && /(?:^|[,\{])subscription\s*:\s*(?!null)[^,}]+/.test(raw))) throw new HttpError(NAME, 200);
+  if (used === null || (customer && customer.subscription !== null && customer.subscription !== undefined) || (!customer && /(?:^|[,{])subscription\s*:\s*(?!null)[^,}]+/.test(raw))) throw new HttpError(NAME, 200);
   const result = limit !== null && limit > 0 ? [feedWindow(43200, used / 1e8 / limit * 100, null, context.now(), "30d")]
     : [valueWindow("30d", dollars(used / 1e8))];
   if (balance !== null) result.push(valueWindow("balance", dollars(balance / 1e8)));

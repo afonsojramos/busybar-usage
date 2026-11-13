@@ -203,7 +203,7 @@ export const factory: Provider = {
     async function attempt(auth: Auth, bases: string[]): Promise<FeedAccount | null> {
       if (!auth.cookie && !auth.bearer) return null;
       attempted = true;
-      for (const base of [...new Set(auth.bases ?? bases)]) {
+      for (const base of new Set(auth.bases ?? bases)) {
         try { return await fetchAuth(context, auth, base); }
         catch (error) {
           if (error instanceof RateLimited || error instanceof Error && error.name === "AbortError") throw error;

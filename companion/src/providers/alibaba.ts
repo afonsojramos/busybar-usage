@@ -8,7 +8,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 class SignIn extends Error {}
 function expand(value: unknown, depth = 0): unknown {
   if (depth > 30) throw new HttpError(NAME, 200);
-  if (typeof value === "string" && /^[\[{]/.test(value.trim())) {
+  if (typeof value === "string" && /^[[{]/.test(value.trim())) {
     try { return expand(JSON.parse(value), depth + 1); } catch { return value; }
   }
   if (Array.isArray(value)) return value.map((child) => expand(child, depth + 1));

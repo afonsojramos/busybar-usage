@@ -104,7 +104,7 @@ function budgets(html: string, now: number): { api: FeedWindow | null; vibe: Fee
       const start = end - Buffer.byteLength(line) + prefixLength;
       if (!Number.isSafeInteger(bytes) || start + bytes > buffer.length) throw new HttpError("Mistral", 200);
       cursor = start + bytes;
-    } else if (/^[\[{]/.test(body)) collect(JSON.parse(body));
+    } else if (/^[[{]/.test(body)) collect(JSON.parse(body));
   }
   if (found.size !== 1) return { api: null, vibe: null };
   return found.values().next().value ?? { api: null, vibe: null };

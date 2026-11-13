@@ -46,16 +46,23 @@ test("Gemini selects lowest tier fractions with Lite fallback", () => {
   assert.deepEqual(parseUsage({ buckets: [...quota.buckets.slice(1), { modelId: "gemini-2.5-flash", remainingFraction: 0 }] }, NOW)?.map((w) => [w.name, w.used_percent]), [["Flash", 100], ["Lite", 20]]);
 });
 test("Gemini project lookup supports object IDs and resource-manager fallback", async () => {
-  for (const project of [{ id: "fixture-project" }, { projectId: "fixture-project" }]) {
-    await gemini.fetch(fakeContext({ files, responses: [json({ cloudaicompanionProject: project }), json(quota)] }));
-  }
-  const context = fakeContext({ files, responses: [json({}), json({ projects: [{ projectId: "labeled", labels: { "generative-language": "" } }] }), json(quota)] });
-  const fetch = context.fetch;
-  context.fetch = async (url, init) => {
-    if (String(url).endsWith(":retrieveUserQuota")) assert.equal(init?.body, '{"project":"labeled"}');
-    return fetch(url, init);
+  /** The body of the quota request the provider sends. */
+  const quotaBody = async (context: ReturnType<typeof fakeContext>) => {
+    let body: unknown;
+    const fetch = context.fetch;
+    context.fetch = async (url, init) => {
+      if (String(url).endsWith(":retrieveUserQuota")) body = init?.body;
+      return fetch(url, init);
+    };
+    await gemini.fetch(context);
+    return body;
   };
-  await gemini.fetch(context);
+  for (const project of [{ id: "fixture-project" }, { projectId: "fixture-project" }]) {
+    const context = fakeContext({ files, responses: [json({ cloudaicompanionProject: project }), json(quota)] });
+    assert.equal(await quotaBody(context), '{"project":"fixture-project"}');
+  }
+  const fallback = fakeContext({ files, responses: [json({}), json({ projects: [{ projectId: "labeled", labels: { "generative-language": "" } }] }), json(quota)] });
+  assert.equal(await quotaBody(fallback), '{"project":"labeled"}');
 });
 test("Gemini refreshes in memory with environment or installed OAuth client", async () => {
   for (const env of [{ GEMINI_OAUTH_CLIENT_ID: "fake-client", GEMINI_OAUTH_CLIENT_SECRET: "fake-secret" }, { GEMINI_OAUTH2_JS_PATH: "/fixture/oauth2.js" }, { PATH: "/fixture/bin" }]) {
