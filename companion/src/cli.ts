@@ -60,7 +60,8 @@ function options() {
 
 async function main(): Promise<void> {
   const settings = options();
-  const collector = new Collector(settings.selected, systemContext(), log);
+  // --once has no later collection to pick up a slow provider's numbers, so it waits for all of them.
+  const collector = new Collector(settings.selected, systemContext(), log, settings.once ? { waitMs: Infinity } : {});
   let pushStatus = "";
 
   const tick = async () => {

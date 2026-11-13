@@ -27,7 +27,7 @@ interface State {
 export type Log = (message: string) => void;
 
 export interface CollectorOptions {
-  /** How long collect() waits for slow providers; they finish in the background. */
+  /** How long collect() waits for slow providers; they finish in the background. Infinity waits for all. */
   waitMs?: number;
 }
 
@@ -116,15 +116,19 @@ export class Collector {
   }
 
   async collect(): Promise<Feed> {
-    const pending = this.providers.map((provider) => this.update(provider)).filter((done) => done !== null);
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    await Promise.race([
-      Promise.all(pending),
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, this.waitMs);
-      }),
-    ]);
-    clearTimeout(timer);
+    const pending = Promise.all(this.providers.map((provider) => this.update(provider)).filter((done) => done !== null));
+    if (Number.isFinite(this.waitMs)) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        pending,
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, this.waitMs);
+        }),
+      ]);
+      clearTimeout(timer);
+    } else {
+      await pending;
+    }
     return {
       generated_at: new Date(this.context.now() * 1000).toISOString(),
       accounts: this.providers.flatMap((provider) =>

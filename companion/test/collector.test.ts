@@ -149,6 +149,12 @@ test("an attempt still running after 10 minutes is ignored, and the minimum inte
   assert.deepEqual(logs, ["Test: still running after 10 minutes; ignoring it"]);
 });
 
+test("with no wait limit, a collection waits for every provider", async () => {
+  const slow: Provider = { id: "test", name: "Test", fetch: () => new Promise((resolve) => setTimeout(() => resolve([account(4)]), 30)) };
+  const collector = new Collector([slow], fakeContext({}), () => {}, { waitMs: Infinity });
+  assert.equal((await collector.collect()).accounts[0]?.windows[0].used_percent, 4);
+});
+
 test("leaves out providers that are not set up", async () => {
   const collector = new Collector([scripted([new NotConfigured("Test")])], fakeContext({}), () => {});
   assert.deepEqual((await collector.collect()).accounts, []);
