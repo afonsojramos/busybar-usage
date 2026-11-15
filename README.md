@@ -293,7 +293,8 @@ lifecycle and resource rules. The companion's provider modules take a `Context` 
 Keychain and `fetch`, so each one is tested against fixtures without real logins.
 
 The images in this README are the bar's own screen. With the bar on USB,
-`node scripts/screenshot.ts docs/claude.png` saves what it shows.
+`node scripts/screenshot.ts docs/claude.png` saves what it shows, and `--raw` saves the 72×16
+pixels themselves, like the BUSY Apps Catalog screenshots in `screenshots/`.
 
 ## Credits
 

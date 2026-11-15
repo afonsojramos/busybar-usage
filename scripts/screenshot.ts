@@ -1,7 +1,8 @@
 /**
  * Saves what the bar's front screen shows as a PNG of its LED matrix, for the README's images.
+ * With --raw it saves the 72×16 pixels themselves, the size the BUSY Apps Catalog takes.
  *
- *   node scripts/screenshot.ts docs/claude.png [host]
+ *   node scripts/screenshot.ts [--raw] docs/claude.png [host]
  */
 import { writeFileSync } from "node:fs";
 import { crc32, deflateSync } from "node:zlib";
@@ -19,9 +20,11 @@ const UNLIT = [36, 36, 36];
 /** Samples per axis for antialiased edges. */
 const SAMPLES = 4;
 
-const [out, host = "10.0.4.20"] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const raw = args.includes("--raw");
+const [out, host = "10.0.4.20"] = args.filter((arg) => arg !== "--raw");
 if (!out) {
-  console.error("usage: node scripts/screenshot.ts <out.png> [host]");
+  console.error("usage: node scripts/screenshot.ts [--raw] <out.png> [host]");
   process.exit(2);
 }
 
@@ -65,27 +68,49 @@ function coverage(
   return hits / (SAMPLES * SAMPLES);
 }
 
-const width = COLUMNS * CELL + 2 * MARGIN;
-const height = ROWS * CELL + 2 * MARGIN;
-const rgba = Buffer.alloc(width * height * 4);
-const inset = (CELL - LED) / 2;
-for (let y = 0; y < height; y++) {
-  for (let x = 0; x < width; x++) {
-    const panel = coverage(x, y, 0, 0, width, height, PANEL_RADIUS);
-    if (panel === 0) continue;
-    const column = Math.floor((x - MARGIN) / CELL);
-    const row = Math.floor((y - MARGIN) / CELL);
-    let color = PANEL;
-    if (column >= 0 && column < COLUMNS && row >= 0 && row < ROWS) {
-      const offset = (row * COLUMNS + column) * 3;
-      const [b, g, r] = screen.subarray(offset, offset + 3);
-      const led = r + g + b > 0 ? [r, g, b] : UNLIT;
-      const share = coverage(x, y, MARGIN + column * CELL + inset, MARGIN + row * CELL + inset, LED, LED, LED_RADIUS);
-      color = PANEL.map((channel, i) => Math.round(channel + (led[i] - channel) * share));
-    }
-    rgba.set([...color, Math.round(panel * 255)], (y * width + x) * 4);
-  }
+interface Image {
+  width: number;
+  height: number;
+  rgba: Buffer;
 }
+
+/** The screen's own pixels, one image pixel per LED. */
+function rawImage(): Image {
+  const rgba = Buffer.alloc(COLUMNS * ROWS * 4);
+  for (let pixel = 0; pixel < COLUMNS * ROWS; pixel++) {
+    const [b, g, r] = screen.subarray(pixel * 3, pixel * 3 + 3);
+    rgba.set([r, g, b, 255], pixel * 4);
+  }
+  return { width: COLUMNS, height: ROWS, rgba };
+}
+
+/** The LED matrix drawn larger, on a rounded panel. */
+function ledImage(): Image {
+  const width = COLUMNS * CELL + 2 * MARGIN;
+  const height = ROWS * CELL + 2 * MARGIN;
+  const rgba = Buffer.alloc(width * height * 4);
+  const inset = (CELL - LED) / 2;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const panel = coverage(x, y, 0, 0, width, height, PANEL_RADIUS);
+      if (panel === 0) continue;
+      const column = Math.floor((x - MARGIN) / CELL);
+      const row = Math.floor((y - MARGIN) / CELL);
+      let color = PANEL;
+      if (column >= 0 && column < COLUMNS && row >= 0 && row < ROWS) {
+        const offset = (row * COLUMNS + column) * 3;
+        const [b, g, r] = screen.subarray(offset, offset + 3);
+        const led = r + g + b > 0 ? [r, g, b] : UNLIT;
+        const share = coverage(x, y, MARGIN + column * CELL + inset, MARGIN + row * CELL + inset, LED, LED, LED_RADIUS);
+        color = PANEL.map((channel, i) => Math.round(channel + (led[i] - channel) * share));
+      }
+      rgba.set([...color, Math.round(panel * 255)], (y * width + x) * 4);
+    }
+  }
+  return { width, height, rgba };
+}
+
+const { width, height, rgba } = raw ? rawImage() : ledImage();
 
 function chunk(type: string, data: Buffer): Buffer {
   const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
