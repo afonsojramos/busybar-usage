@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "description": "Shows AI subscription usage (Claude, Codex and more) from a companion on your computer or a CLIProxyAPI hub",
+  "license": "GPL-3.0-only",
   "author": "Afonso Jorge Ramos",
   "type": "module",
   "scripts": {
