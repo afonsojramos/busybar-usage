@@ -8,13 +8,7 @@ import {
   type FeedWindow,
 } from "../feed.ts";
 import { apiKey, providerEntry } from "../keys.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-  retryAfterSeconds,
-  type Provider,
-} from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const ID = "gitkraken";
 const NAME = "GitKraken";
@@ -39,34 +33,21 @@ export const gitkraken: Provider = {
     if (!key) throw new NotConfigured(NAME);
     headers.Authorization = `Bearer ${key}`;
     const entry = await providerEntry(context, ID);
-    const organization = String(
-      entry.workspaceID ?? context.env.GITKRAKEN_ORG_ID ?? "",
-    ).trim();
-    if (
-      !/^[\x21-\x7e]{1,16384}$/.test(key) ||
-      (organization && !/^[\x21-\x7e]{1,256}$/.test(organization))
-    )
+    const organization = String(entry.workspaceID ?? context.env.GITKRAKEN_ORG_ID ?? "").trim();
+    if (!/^[\x21-\x7e]{1,16384}$/.test(key) || (organization && !/^[\x21-\x7e]{1,256}$/.test(organization)))
       return [{ ...base, error: "sign in" }];
     headers["Client-Name"] = "CodexBar";
     headers["Client-Version"] = "0.0.0";
     headers["User-Agent"] = "CodexBar";
     if (organization) headers["gk-org-id"] = organization;
-    const get = async (
-      url: string,
-      additions: Record<string, string> = {},
-    ): Promise<unknown> => {
+    const get = async (url: string, additions: Record<string, string> = {}): Promise<unknown> => {
       const response = await context.fetch(url, {
         headers: { ...headers, ...additions },
         redirect: "error",
         signal: AbortSignal.timeout(30_000),
       });
-      if (response.status === 401 || response.status === 403)
-        throw new SignIn();
-      if (response.status === 429)
-        throw new RateLimited(
-          NAME,
-          now + retryAfterSeconds(response.headers, 300),
-        );
+      if (response.status === 401 || response.status === 403) throw new SignIn();
+      if (response.status === 429) throw new RateLimited(NAME, now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError(NAME, response.status);
       try {
         return await response.json();
@@ -80,9 +61,7 @@ export const gitkraken: Provider = {
       const windows: FeedWindow[] = [];
       const data = body.data;
       if (body.error != null || !isRecord(data)) return fail();
-      const quota = (
-        value: unknown,
-      ): { used: number; limit: number } | null => {
+      const quota = (value: unknown): { used: number; limit: number } | null => {
         if (
           !isRecord(value) ||
           typeof value.used !== "number" ||
@@ -91,8 +70,7 @@ export const gitkraken: Provider = {
           !Number.isFinite(value.limit) ||
           value.used < 0 ||
           (value.limit < 0 && value.limit !== -1) ||
-          (value.limit > 0 &&
-            !Number.isFinite((value.used / value.limit) * 100))
+          (value.limit > 0 && !Number.isFinite((value.used / value.limit) * 100))
         )
           return null;
         return { used: value.used, limit: value.limit };
@@ -103,9 +81,7 @@ export const gitkraken: Provider = {
         !personal ||
         reset === null ||
         typeof data.resetsOn !== "string" ||
-        !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(
-          data.resetsOn,
-        )
+        !/T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(data.resetsOn)
       )
         return fail();
       for (const [name, q] of [
@@ -116,21 +92,14 @@ export const gitkraken: Provider = {
         if (q.limit === 0) base.blocked = true;
         windows.push(
           q.limit > 0
-            ? feedWindow(
-                10080,
-                Math.min(100, (q.used / q.limit) * 100),
-                reset,
-                now,
-                name,
-              )
+            ? feedWindow(10080, Math.min(100, (q.used / q.limit) * 100), reset, now, name)
             : valueWindow(name, q.limit === -1 ? "Unlimited" : "No allowance"),
         );
       }
       return [
         {
           ...base,
-          blocked:
-            base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
+          blocked: base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
           windows,
         },
       ];

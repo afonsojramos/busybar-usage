@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { openai } from "../src/providers/openai.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -29,7 +29,7 @@ const payloads = [
     has_more: false,
   },
 ];
-const env = { OPENAI_ADMIN_KEY: "fixture-key", ...{} };
+const env = { OPENAI_ADMIN_KEY: "fixture-key" };
 
 test("openai: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

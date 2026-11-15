@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { deepgram } from "../src/providers/deepgram.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -24,7 +24,10 @@ const payloads = [
     ],
   },
 ];
-const env = { DEEPGRAM_API_KEY: "fixture-key", ...{ DEEPGRAM_PROJECT_ID: "project-123" } };
+const env = {
+  DEEPGRAM_API_KEY: "fixture-key",
+  DEEPGRAM_PROJECT_ID: "project-123",
+};
 
 test("deepgram: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

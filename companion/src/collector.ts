@@ -93,7 +93,12 @@ export class Collector {
         state.accounts = accounts;
         state.fetchedAt = this.context.now();
         const errors = accounts.filter((account) => account.error).map((account) => account.error);
-        this.report(provider, state, errors.length ? `error:${errors.join()}` : "ok", errors.length ? errors.join(", ") : "updated");
+        this.report(
+          provider,
+          state,
+          errors.length ? `error:${errors.join()}` : "ok",
+          errors.length ? errors.join(", ") : "updated",
+        );
       } catch (error) {
         if (!current()) return;
         if (error instanceof NotConfigured) {
@@ -106,7 +111,9 @@ export class Collector {
           state.retryAt = this.context.now() + ERROR_BACKOFF_SECONDS;
           // Only our own errors are safe to log: a fetch error can quote a header that holds a key.
           const message =
-            error instanceof HttpError ? error.message : `request failed (${error instanceof Error ? error.name : "error"})`;
+            error instanceof HttpError
+              ? error.message
+              : `request failed (${error instanceof Error ? error.name : "error"})`;
           this.report(provider, state, `failed:${message}`, `${message}; keeping the last numbers`);
         }
       } finally {
@@ -118,7 +125,9 @@ export class Collector {
   }
 
   async collect(): Promise<Feed> {
-    const pending = Promise.all(this.providers.map((provider) => this.update(provider)).filter((done) => done !== null));
+    const pending = Promise.all(
+      this.providers.map((provider) => this.update(provider)).filter((done) => done !== null),
+    );
     if (Number.isFinite(this.waitMs)) {
       let timer: ReturnType<typeof setTimeout> | undefined;
       await Promise.race([

@@ -1,6 +1,13 @@
 import { accountLabel, finiteNumber, isRecord, valueWindow, type FeedAccount } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
+import {
+  HttpError,
+  NotConfigured,
+  RateLimited,
+  retryAfterSeconds,
+  type Provider,
+  type RequestOptions,
+} from "./types.ts";
 
 function amount(value: number, prefix = "$"): string {
   const fixed = `${prefix}${value.toFixed(2)}`;
@@ -17,13 +24,18 @@ export const deepseek: Provider = {
     if (!key) throw new NotConfigured("DeepSeek");
     const now = context.now();
     const base: FeedAccount = {
-      provider: "deepseek", account: accountLabel(null), blocked: false,
-      observed_at: new Date(now * 1000).toISOString(), windows: [],
+      provider: "deepseek",
+      account: accountLabel(null),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
     };
     const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: "application/json" };
-    async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+    async function request(url: string, init: RequestOptions = {}): Promise<unknown> {
       const response = await context.fetch(url, {
-        ...init, headers: { ...headers, ...init.headers }, signal: AbortSignal.timeout(30_000),
+        ...init,
+        headers: { ...headers, ...init.headers },
+        signal: AbortSignal.timeout(30_000),
       });
       if (response.status === 401 || response.status === 403) return SIGN_IN;
       if (response.status === 429) throw new RateLimited("DeepSeek", now + retryAfterSeconds(response.headers, 300));
@@ -47,11 +59,19 @@ export const deepseek: Provider = {
       }
       return { currency: entry.currency, total: Number(entry.total_balance) };
     });
-    const selected = balances.find((b) => b.currency === "USD" && b.total > 0)
-      ?? balances.find((b) => b.total > 0) ?? balances.find((b) => b.currency === "USD") ?? balances[0];
+    const selected =
+      balances.find((b) => b.currency === "USD" && b.total > 0) ??
+      balances.find((b) => b.total > 0) ??
+      balances.find((b) => b.currency === "USD") ??
+      balances[0];
     if (!selected) return [{ ...base, blocked: true, windows: [valueWindow("bal", "$0.00")] }];
     const prefix = selected.currency === "CNY" ? "¥" : "$";
-    return [{ ...base, blocked: !data.is_available || selected.total <= 0,
-      windows: [valueWindow("bal", amount(selected.total, prefix))] }];
+    return [
+      {
+        ...base,
+        blocked: !data.is_available || selected.total <= 0,
+        windows: [valueWindow("bal", amount(selected.total, prefix))],
+      },
+    ];
   },
 };

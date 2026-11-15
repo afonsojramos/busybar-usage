@@ -1,7 +1,23 @@
 import { join } from "node:path";
-import { accountLabel, feedWindow, finiteNumber, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
+import {
+  accountLabel,
+  feedWindow,
+  finiteNumber,
+  isRecord,
+  valueWindow,
+  type FeedAccount,
+  type FeedWindow,
+} from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider, isProviderHost } from "./types.ts";
+import {
+  HttpError,
+  NotConfigured,
+  RateLimited,
+  retryAfterSeconds,
+  type Context,
+  type Provider,
+  isProviderHost,
+} from "./types.ts";
 
 type Region = "global" | "bigmodel-cn";
 interface Settings {
@@ -28,13 +44,18 @@ function endpoint(raw: string): URL {
 
 async function configEntry(context: Context): Promise<Record<string, unknown>> {
   const home = context.env.XDG_CONFIG_HOME || join(context.home, ".config");
-  const paths = context.env.CODEXBAR_CONFIG ? [context.env.CODEXBAR_CONFIG]
+  const paths = context.env.CODEXBAR_CONFIG
+    ? [context.env.CODEXBAR_CONFIG]
     : [join(home, "codexbar", "config.json"), join(context.home, ".codexbar", "config.json")];
   for (const path of paths) {
     const file = await context.readFile(path);
     if (!file) continue;
     let root: unknown;
-    try { root = JSON.parse(file); } catch { continue; }
+    try {
+      root = JSON.parse(file);
+    } catch {
+      continue;
+    }
     if (!isRecord(root)) continue;
     const providers = Array.isArray(root.providers) ? root.providers : [];
     const entry = providers.find((item) => isRecord(item) && item.id === "zai");
@@ -56,7 +77,8 @@ async function settings(context: Context): Promise<Settings> {
     throw new Error("z.ai endpoint does not match the selected region");
   }
   const quota = override ?? new URL(`https://${host}/api/monitor/usage/quota/limit`);
-  if (!quotaOverride && (quota.pathname === "/" || quota.pathname === "")) quota.pathname = "/api/monitor/usage/quota/limit";
+  if (!quotaOverride && (quota.pathname === "/" || quota.pathname === ""))
+    quota.pathname = "/api/monitor/usage/quota/limit";
   const balanceOverride = text(context.env.Z_AI_BALANCE_URL);
   const balance = endpoint(balanceOverride ?? "https://www.bigmodel.cn/api/biz/account/query-customer-account-report");
   const accounts = isRecord(entry.tokenAccounts) ? entry.tokenAccounts : {};
@@ -67,7 +89,8 @@ async function settings(context: Context): Promise<Settings> {
   if (scope !== "personal" && scope !== "team") throw new Error("z.ai usage scope is invalid");
   const selectors: Record<string, string> = {};
   if (scope === "team") {
-    const organization = text(selected.organizationId) ?? text(selected.organizationID) ?? text(context.env.Z_AI_BIGMODEL_ORGANIZATION);
+    const organization =
+      text(selected.organizationId) ?? text(selected.organizationID) ?? text(context.env.Z_AI_BIGMODEL_ORGANIZATION);
     const project = text(selected.workspaceID) ?? text(context.env.Z_AI_BIGMODEL_PROJECT);
     if (!organization || !project || /[\r\n]/.test(organization + project)) {
       throw new Error("z.ai team scope requires single-line organization and project IDs");
@@ -89,10 +112,22 @@ function integer(value: unknown): number | null {
 }
 
 function parseLimits(root: unknown, now: number): Limit[] | null {
-  if (!isRecord(root) || root.success !== true || root.code !== 200 || !isRecord(root.data) || !Array.isArray(root.data.limits)) return null;
+  if (
+    !isRecord(root) ||
+    root.success !== true ||
+    root.code !== 200 ||
+    !isRecord(root.data) ||
+    !Array.isArray(root.data.limits)
+  )
+    return null;
   const limits: Limit[] = [];
   for (const raw of root.data.limits) {
-    if (isRecord(raw) && typeof raw.type === "string" && !["TOKENS_LIMIT", "CREDIT_LIMIT", "TIME_LIMIT"].includes(raw.type)) continue;
+    if (
+      isRecord(raw) &&
+      typeof raw.type === "string" &&
+      !["TOKENS_LIMIT", "CREDIT_LIMIT", "TIME_LIMIT"].includes(raw.type)
+    )
+      continue;
     if (!isRecord(raw) || !["TOKENS_LIMIT", "CREDIT_LIMIT", "TIME_LIMIT"].includes(String(raw.type))) return null;
     const unit = integer(raw.unit);
     const count = integer(raw.number);
@@ -107,22 +142,35 @@ function parseLimits(root: unknown, now: number): Limit[] | null {
     const remaining = integer(raw.remaining);
     if (total !== null && total > 0) {
       const used = remaining !== null ? Math.max(total - remaining, current ?? total - remaining) : current;
-      if (used !== null) percent = Math.max(0, Math.min(total, used)) / total * 100;
+      if (used !== null) percent = (Math.max(0, Math.min(total, used)) / total) * 100;
     }
     const multiplier = unit === 1 ? 1440 : unit === 3 ? 60 : unit === 5 ? 1 : unit === 6 ? 10080 : null;
     const mcp = raw.type === "TIME_LIMIT";
-    const minutes = mcp && unit === 5 && count === 1 ? 43200 : multiplier !== null && count > 0 ? count * multiplier : null;
+    const minutes =
+      mcp && unit === 5 && count === 1 ? 43200 : multiplier !== null && count > 0 ? count * multiplier : null;
     let reset = integer(raw.nextResetTime);
     // Five-hour resets beyond the window are incompatible; do not guess a timezone correction.
     if (!mcp && minutes === 300 && reset !== null && reset > (now + 18060) * 1000) reset = null;
-    limits.push({ kind: mcp ? "mcp" : "plan", window: feedWindow(minutes, Math.max(0, Math.min(100, percent)), reset === null ? null : reset / 1000, now, minutes === null ? mcp ? "MCP" : "quota" : undefined) });
+    limits.push({
+      kind: mcp ? "mcp" : "plan",
+      window: feedWindow(
+        minutes,
+        Math.max(0, Math.min(100, percent)),
+        reset === null ? null : reset / 1000,
+        now,
+        minutes === null ? (mcp ? "MCP" : "quota") : undefined,
+      ),
+    });
   }
   return limits;
 }
 
 function selectedWindows(limits: Limit[]): FeedWindow[] {
   const order = (a: FeedWindow, b: FeedWindow) => (a.minutes ?? Infinity) - (b.minutes ?? Infinity);
-  const plan = limits.filter((limit) => limit.kind === "plan").map((limit) => limit.window).sort(order);
+  const plan = limits
+    .filter((limit) => limit.kind === "plan")
+    .map((limit) => limit.window)
+    .sort(order);
   const mcp = limits.filter((limit) => limit.kind === "mcp").at(-1)?.window;
   const first = plan[0];
   const last = plan.at(-1);
@@ -135,8 +183,10 @@ export const zai: Provider = {
   name: "z.ai",
   async fetch(context): Promise<FeedAccount[]> {
     const config = await settings(context);
-    const envNames = config.region === "global" ? ["Z_AI_API_KEY"]
-      : ["Z_AI_API_KEY", "BIGMODEL_API_KEY", "ZHIPU_API_KEY", "ZHIPUAI_API_KEY", "GLM_API_KEY"];
+    const envNames =
+      config.region === "global"
+        ? ["Z_AI_API_KEY"]
+        : ["Z_AI_API_KEY", "BIGMODEL_API_KEY", "ZHIPU_API_KEY", "ZHIPUAI_API_KEY", "GLM_API_KEY"];
     let key = await apiKey(context, "zai", envNames);
     if (!key && config.region === "bigmodel-cn") {
       for (const relative of [".coding-relay/glm-api-key", ".config/bigmodel/api_key", ".config/zhipu/api_key"]) {
@@ -148,8 +198,11 @@ export const zai: Provider = {
     if (!key) throw new NotConfigured("z.ai");
     const now = context.now();
     const base: FeedAccount = {
-      provider: "zai", account: accountLabel(config.email), blocked: false,
-      observed_at: new Date(now * 1000).toISOString(), windows: [],
+      provider: "zai",
+      account: accountLabel(config.email),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
     };
     const headers = { Authorization: `Bearer ${key}`, Accept: "application/json", ...config.selectors };
     const response = await context.fetch(config.quota, { headers, signal: AbortSignal.timeout(30_000) });
@@ -157,12 +210,21 @@ export const zai: Provider = {
     if (response.status === 429) throw new RateLimited("z.ai", now + retryAfterSeconds(response.headers, 300));
     if (!response.ok) throw new HttpError("z.ai", response.status);
     let root: unknown;
-    try { root = await response.json(); } catch { throw new HttpError("z.ai", response.status); }
+    try {
+      root = await response.json();
+    } catch {
+      throw new HttpError("z.ai", response.status);
+    }
     const dataEmail = isRecord(root) && isRecord(root.data) ? text(root.data.email) : null;
     const email = config.email ?? (isRecord(root) ? text(root.email) : null) ?? dataEmail;
     const identified = { ...base, account: accountLabel(email) };
-    const noPlan = config.region === "bigmodel-cn" && !config.team && isRecord(root)
-      && root.success === false && root.code === 500 && root.msg === "当前用户不存在coding plan";
+    const noPlan =
+      config.region === "bigmodel-cn" &&
+      !config.team &&
+      isRecord(root) &&
+      root.success === false &&
+      root.code === 500 &&
+      root.msg === "当前用户不存在coding plan";
     if (noPlan) {
       const balance = await context.fetch(config.balance, {
         headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
@@ -172,17 +234,36 @@ export const zai: Provider = {
       if (balance.status === 429) throw new RateLimited("z.ai", now + retryAfterSeconds(balance.headers, 300));
       if (!balance.ok) throw new HttpError("z.ai", balance.status);
       let body: unknown;
-      try { body = await balance.json(); } catch { throw new HttpError("z.ai", balance.status); }
+      try {
+        body = await balance.json();
+      } catch {
+        throw new HttpError("z.ai", balance.status);
+      }
       const data = isRecord(body) && body.success === true && isRecord(body.data) ? body.data : null;
-      const amount = data ? finiteNumber(data.availableBalance) ?? finiteNumber(data.balance) : null;
+      const amount = data ? (finiteNumber(data.availableBalance) ?? finiteNumber(data.balance)) : null;
       if (amount === null) throw new HttpError("z.ai", balance.status);
       const value = `¥${amount.toFixed(2)}`;
       const compact = value.length <= 12 ? value : `¥${amount.toExponential(2)}`;
-      return [{ ...identified, account: accountLabel(email ?? (isRecord(body) ? text(body.email) : null) ?? (data ? text(data.email) : null)), blocked: amount <= 0, windows: [valueWindow("CNY", compact)] }];
+      return [
+        {
+          ...identified,
+          account: accountLabel(
+            email ?? (isRecord(body) ? text(body.email) : null) ?? (data ? text(data.email) : null),
+          ),
+          blocked: amount <= 0,
+          windows: [valueWindow("CNY", compact)],
+        },
+      ];
     }
     const limits = parseLimits(root, now);
     if (!limits) throw new HttpError("z.ai", response.status);
     if (!limits.length) return [{ ...identified, error: "no quota" }];
-    return [{ ...identified, blocked: limits.some((limit) => (limit.window.used_percent ?? 0) >= 100), windows: selectedWindows(limits) }];
+    return [
+      {
+        ...identified,
+        blocked: limits.some((limit) => (limit.window.used_percent ?? 0) >= 100),
+        windows: selectedWindows(limits),
+      },
+    ];
   },
 };

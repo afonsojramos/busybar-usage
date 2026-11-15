@@ -1,6 +1,22 @@
-import { accountLabel, feedWindow, finiteNumber, isoToSeconds, isRecord, valueWindow, type FeedAccount, type FeedWindow } from "../feed.ts";
+import {
+  accountLabel,
+  feedWindow,
+  finiteNumber,
+  isoToSeconds,
+  isRecord,
+  valueWindow,
+  type FeedAccount,
+  type FeedWindow,
+} from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
+import {
+  HttpError,
+  NotConfigured,
+  RateLimited,
+  retryAfterSeconds,
+  type Provider,
+  type RequestOptions,
+} from "./types.ts";
 
 function amount(value: number, prefix = "$"): string {
   const fixed = `${prefix}${value.toFixed(2)}`;
@@ -17,13 +33,18 @@ export const ollama: Provider = {
     if (!key) throw new NotConfigured("Ollama");
     const now = context.now();
     const base: FeedAccount = {
-      provider: "ollama", account: accountLabel(null), blocked: false,
-      observed_at: new Date(now * 1000).toISOString(), windows: [],
+      provider: "ollama",
+      account: accountLabel(null),
+      blocked: false,
+      observed_at: new Date(now * 1000).toISOString(),
+      windows: [],
     };
     const headers: Record<string, string> = { Authorization: `Bearer ${key}`, Accept: "application/json" };
-    async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+    async function request(url: string, init: RequestOptions = {}): Promise<unknown> {
       const response = await context.fetch(url, {
-        ...init, headers: { ...headers, ...init.headers }, signal: AbortSignal.timeout(30_000),
+        ...init,
+        headers: { ...headers, ...init.headers },
+        signal: AbortSignal.timeout(30_000),
       });
       if (response.status === 401 || response.status === 403) return SIGN_IN;
       if (response.status === 429) throw new RateLimited("Ollama", now + retryAfterSeconds(response.headers, 300));
@@ -45,7 +66,10 @@ export const ollama: Provider = {
     };
     const reset = (value: unknown): number | null => {
       if (value == null) return null;
-      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+      if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+      ) {
         throw new HttpError("Ollama", 200);
       }
       const result = isoToSeconds(value);
@@ -58,7 +82,10 @@ export const ollama: Provider = {
       const included = data.included;
       if (!isRecord(included)) throw new HttpError("Ollama", 200);
       if (included.session != null || included.weekly != null) {
-        for (const [key, minutes] of [["session", 300], ["weekly", 10080]] as const) {
+        for (const [key, minutes] of [
+          ["session", 300],
+          ["weekly", 10080],
+        ] as const) {
           const entry = included[key];
           if (entry == null) continue;
           if (!isRecord(entry)) throw new HttpError("Ollama", 200);
@@ -73,7 +100,7 @@ export const ollama: Provider = {
         if (allowance < 0 || !Number.isFinite(used)) throw new HttpError("Ollama", 200);
         if (included.period != null && !isRecord(included.period)) throw new HttpError("Ollama", 200);
         const until = isRecord(included.period) ? reset(included.period.until) : null;
-        if (allowance > 0) windows.push(feedWindow(43200, Math.min(100, used / allowance * 100), until, now));
+        if (allowance > 0) windows.push(feedWindow(43200, Math.min(100, (used / allowance) * 100), until, now));
         else windows.push(valueWindow("spent", amount(used)));
       }
     }

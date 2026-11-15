@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { chutes } from "../src/providers/chutes.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -12,7 +12,7 @@ const payloads = [
     rolling_window: { requests: 40, limit: 100, window_minutes: 240 },
   },
 ];
-const env = { CHUTES_API_KEY: "fixture-key", ...{} };
+const env = { CHUTES_API_KEY: "fixture-key" };
 
 test("chutes: CodexBar fixture", async () => {
   const context = fakeContext({ env, responses: payloads.map((body) => json(body)) });

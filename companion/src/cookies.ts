@@ -19,7 +19,11 @@ const nonEmpty = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value.trim() : null;
 
 /** A Cookie header for a provider, or null when no session is available. */
-export async function cookieHeader(context: Context, providerId: string, options: CookieOptions): Promise<string | null> {
+export async function cookieHeader(
+  context: Context,
+  providerId: string,
+  options: CookieOptions,
+): Promise<string | null> {
   for (const name of options.envNames ?? []) {
     const value = nonEmpty(context.env[name]);
     if (value) return value;

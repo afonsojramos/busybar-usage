@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { cookieHeader } from "../src/cookies.ts";
 import { systemContext } from "../src/context.ts";
 import { providerEntry } from "../src/keys.ts";
@@ -11,7 +11,9 @@ import { fakeContext } from "./helpers.ts";
 
 test("runs a program without a shell, with input, and reports a missing one as null", async () => {
   const context = systemContext();
-  const result = await context.run(process.execPath, ["-e", "process.stdin.pipe(process.stdout)"], { input: "a;b $(x)" });
+  const result = await context.run(process.execPath, ["-e", "process.stdin.pipe(process.stdout)"], {
+    input: "a;b $(x)",
+  });
   assert.deepEqual(result, { code: 0, stdout: "a;b $(x)", stderr: "" });
   assert.equal(await context.run("busybar-usage-no-such-program", []), null);
   const slow = await context.run(process.execPath, ["-e", "setTimeout(() => {}, 5000)"], { timeoutMs: 100 });
@@ -64,7 +66,8 @@ test("provider settings prefer the companion's entry over CodexBar's", async () 
 test("a timeout stops the program's descendants and settles even if they hold the output open", async () => {
   const context = systemContext();
   const started = Date.now();
-  const script = "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'inherit' }); setTimeout(() => {}, 5000);";
+  const script =
+    "require('node:child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'inherit' }); setTimeout(() => {}, 5000);";
   const result = await context.run(process.execPath, ["-e", script], { timeoutMs: 150 });
   assert.equal(result?.code, null);
   assert.ok(Date.now() - started < 1000, `settled after ${Date.now() - started} ms`);

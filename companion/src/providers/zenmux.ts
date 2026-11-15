@@ -8,7 +8,15 @@ import {
   type FeedWindow,
 } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Context, type Provider } from "./types.ts";
+import {
+  HttpError,
+  NotConfigured,
+  RateLimited,
+  retryAfterSeconds,
+  type Context,
+  type Provider,
+  type RequestOptions,
+} from "./types.ts";
 
 const ID = "zenmux";
 
@@ -22,7 +30,7 @@ function base(context: Context): FeedAccount {
   };
 }
 
-async function request(context: Context, url: string | URL, key: string, init: RequestInit = {}): Promise<unknown> {
+async function request(context: Context, url: string | URL, key: string, init: RequestOptions = {}): Promise<unknown> {
   const response = await context.fetch(url, {
     ...init,
     redirect: "error",

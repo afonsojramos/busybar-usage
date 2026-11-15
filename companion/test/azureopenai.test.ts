@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { azureopenai } from "../src/providers/azureopenai.ts";
 import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
@@ -8,7 +8,8 @@ import { fakeContext, json, NOW } from "./helpers.ts";
 const payloads = [{ id: "cmpl-1", model: "gpt-4o-mini" }];
 const env = {
   AZURE_OPENAI_API_KEY: "fixture-key",
-  ...{ AZURE_OPENAI_ENDPOINT: "https://resource.openai.azure.com", AZURE_OPENAI_DEPLOYMENT_NAME: "chat-prod" },
+  AZURE_OPENAI_ENDPOINT: "https://resource.openai.azure.com",
+  AZURE_OPENAI_DEPLOYMENT_NAME: "chat-prod",
 };
 
 test("azureopenai: CodexBar fixture", async () => {

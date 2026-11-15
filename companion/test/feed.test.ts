@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { accountLabel, feedWindow, windowName } from "../src/feed.ts";
 
 test("names windows by their length", () => {

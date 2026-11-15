@@ -70,7 +70,11 @@ async function fromCodexBarConfig(context: Context, providerId: string): Promise
 }
 
 /** The API key for a provider with where it came from, or null when none is set anywhere. */
-export async function resolveKey(context: Context, providerId: string, envNames: string[]): Promise<ResolvedKey | null> {
+export async function resolveKey(
+  context: Context,
+  providerId: string,
+  envNames: string[],
+): Promise<ResolvedKey | null> {
   for (const name of envNames) {
     const value = nonEmpty(context.env[name]);
     if (value) return { key: value, source: "env", entry: null };

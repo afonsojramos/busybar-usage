@@ -8,13 +8,7 @@ import {
   type FeedWindow,
 } from "../feed.ts";
 import { apiKey } from "../keys.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-  retryAfterSeconds,
-  type Provider,
-} from "./types.ts";
+import { HttpError, NotConfigured, RateLimited, retryAfterSeconds, type Provider } from "./types.ts";
 
 const ID = "chatbox";
 const NAME = "Chatbox AI";
@@ -44,26 +38,17 @@ export const chatbox: Provider = {
     const key = await apiKey(context, ID, ["CHATBOX_LICENSE_KEY"]);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (!key) throw new NotConfigured(NAME);
-    if (key.length > 4096 || /[\s\x00-\x1f\x7f-\x9f]/u.test(key))
-      return [{ ...base, error: "sign in" }];
+    if (key.length > 4096 || /[\s\x00-\x1f\x7f-\x9f]/u.test(key)) return [{ ...base, error: "sign in" }];
     headers.Authorization = key;
     headers["Cache-Control"] = "no-store";
-    const get = async (
-      url: string,
-      additions: Record<string, string> = {},
-    ): Promise<unknown> => {
+    const get = async (url: string, additions: Record<string, string> = {}): Promise<unknown> => {
       const response = await context.fetch(url, {
         headers: { ...headers, ...additions },
         redirect: "error",
         signal: AbortSignal.timeout(30_000),
       });
-      if (response.status === 401 || response.status === 403)
-        throw new SignIn();
-      if (response.status === 429)
-        throw new RateLimited(
-          NAME,
-          now + retryAfterSeconds(response.headers, 300),
-        );
+      if (response.status === 401 || response.status === 403) throw new SignIn();
+      if (response.status === 429) throw new RateLimited(NAME, now + retryAfterSeconds(response.headers, 300));
       if (!response.ok) throw new HttpError(NAME, response.status);
       try {
         return await response.json();
@@ -72,27 +57,17 @@ export const chatbox: Provider = {
       }
     };
     try {
-      const body = await get(
-        "https://api.chatboxai.app/api/license/detail/realtime",
-      );
+      const body = await get("https://api.chatboxai.app/api/license/detail/realtime");
       if (!isRecord(body)) return fail();
       const windows: FeedWindow[] = [];
       if (body.error || !isRecord(body.data)) return fail();
       const data = body.data;
       const counter = (value: unknown): number | null => {
         if (value == null) return null;
-        return typeof value === "number" &&
-          Number.isSafeInteger(value) &&
-          value >= 0
-          ? value
-          : fail();
+        return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : fail();
       };
       type Pool = { used: number; limit: number };
-      const pool = (
-        raw: Record<string, unknown>,
-        usedKey: string,
-        limitKey: string,
-      ): Pool | null => {
+      const pool = (raw: Record<string, unknown>, usedKey: string, limitKey: string): Pool | null => {
         const used = counter(raw[usedKey]),
           limit = counter(raw[limitKey]);
         return used !== null && limit !== null ? { used, limit } : null;
@@ -101,10 +76,7 @@ export const chatbox: Provider = {
       let rewardsReported = false;
       let rewards: Pool = { used: 0, limit: 0 };
       if (data.unified_token_usage_details != null) {
-        if (
-          !Array.isArray(data.unified_token_usage_details) ||
-          data.unified_token_usage_details.length > 100
-        )
+        if (!Array.isArray(data.unified_token_usage_details) || data.unified_token_usage_details.length > 100)
           return fail();
         for (const item of data.unified_token_usage_details) {
           if (!isRecord(item) || typeof item.type !== "string") return fail();
@@ -118,11 +90,7 @@ export const chatbox: Provider = {
               used: (rewards?.used ?? 0) + p.used,
               limit: (rewards?.limit ?? 0) + p.limit,
             };
-            if (
-              !Number.isSafeInteger(rewards.used) ||
-              !Number.isSafeInteger(rewards.limit)
-            )
-              return fail();
+            if (!Number.isSafeInteger(rewards.used) || !Number.isSafeInteger(rewards.limit)) return fail();
           }
         }
       }
@@ -130,52 +98,25 @@ export const chatbox: Provider = {
       if (data.aggregated_reward_details != null) {
         if (!isRecord(data.aggregated_reward_details)) return fail();
         rewardsReported = true;
-        rewards = pool(
-          data.aggregated_reward_details,
-          "token_usage",
-          "token_limit",
-        ) ?? { used: 0, limit: 0 };
+        rewards = pool(data.aggregated_reward_details, "token_usage", "token_limit") ?? { used: 0, limit: 0 };
       }
-      const expansion = pool(
-        data,
-        "expansion_pack_usage",
-        "expansion_pack_limit",
-      );
+      const expansion = pool(data, "expansion_pack_usage", "expansion_pack_limit");
       const images = pool(data, "image_used_count", "image_total_quota");
-      if (!plan && !total && !rewardsReported && !expansion && !images)
-        return fail();
-      const expires =
-        isoToSeconds(data.token_expire_time) ?? isoToSeconds(data.expires_at);
+      if (!plan && !total && !rewardsReported && !expansion && !images) return fail();
+      const expires = isoToSeconds(data.token_expire_time) ?? isoToSeconds(data.expires_at);
       const next = isoToSeconds(data.token_next_refresh_time);
-      const usable =
-        (data.status == null || data.status === "active") &&
-        (expires === null || expires > now);
+      const usable = (data.status == null || data.status === "active") && (expires === null || expires > now);
       const primary = plan ?? total;
       if (primary && (primary.used > 0 || primary.limit > 0)) {
-        if (primary.limit > 0 && primary.used >= primary.limit)
-          base.blocked = true;
+        if (primary.limit > 0 && primary.used >= primary.limit) base.blocked = true;
         const reset =
-          usable &&
-          plan &&
-          plan.limit > 0 &&
-          next !== null &&
-          next > now &&
-          (expires === null || next < expires)
+          usable && plan && plan.limit > 0 && next !== null && next > now && (expires === null || next < expires)
             ? next
             : null;
         windows.push(
           usable && plan && plan.limit > 0
-            ? feedWindow(
-                null,
-                Math.min(100, (plan.used / plan.limit) * 100),
-                reset,
-                now,
-                "Plan",
-              )
-            : valueWindow(
-                plan ? "Plan" : "Quota",
-                compact(Math.max(0, primary.limit - primary.used)) + " cr",
-              ),
+            ? feedWindow(null, Math.min(100, (plan.used / plan.limit) * 100), reset, now, "Plan")
+            : valueWindow(plan ? "Plan" : "Quota", compact(Math.max(0, primary.limit - primary.used)) + " cr"),
         );
       }
       for (const [name, p] of [
@@ -187,26 +128,15 @@ export const chatbox: Provider = {
         if (p.limit > 0 && p.used >= p.limit) base.blocked = true;
         windows.push(
           name === "Top-up" && p.limit > 0
-            ? feedWindow(
-                null,
-                Math.min(100, (p.used / p.limit) * 100),
-                null,
-                now,
-                name,
-              )
-            : valueWindow(
-                name,
-                compact(Math.max(0, p.limit - p.used)) +
-                  (name === "Images" ? "" : " cr"),
-              ),
+            ? feedWindow(null, Math.min(100, (p.used / p.limit) * 100), null, now, name)
+            : valueWindow(name, compact(Math.max(0, p.limit - p.used)) + (name === "Images" ? "" : " cr")),
         );
       }
       if (!windows.length) windows.push(valueWindow("Quota", "0 / 0"));
       return [
         {
           ...base,
-          blocked:
-            base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
+          blocked: base.blocked || windows.some((w) => (w.used_percent ?? 0) >= 100),
           windows,
         },
       ];

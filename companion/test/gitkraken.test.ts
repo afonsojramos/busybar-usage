@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import { gitkraken } from "../src/providers/gitkraken.ts";
-import {
-  HttpError,
-  NotConfigured,
-  RateLimited,
-} from "../src/providers/types.ts";
+import { HttpError, NotConfigured, RateLimited } from "../src/providers/types.ts";
 import { fakeContext, json, NOW } from "./helpers.ts";
 
 // Synthetic counters follow CodexBar's provider fixture; dates are moved beyond NOW.
@@ -36,10 +32,7 @@ test("gitkraken: maps the CodexBar contract and sends the expected credential", 
     account.windows.map((w) => w.used_percent ?? w.value),
     [3, 50],
   );
-  assert.equal(
-    context.calls[0].url,
-    "https://api.gitkraken.dev/v1/ai-tasks/usage",
-  );
+  assert.equal(context.calls[0].url, "https://api.gitkraken.dev/v1/ai-tasks/usage");
   assert.equal(context.calls[0].headers["authorization"], "Bearer fake-key");
   assert.equal(account.observed_at, new Date(NOW * 1000).toISOString());
 });
@@ -64,23 +57,15 @@ test("gitkraken: rate limiting honors Retry-After", async () => {
     ...configured,
     responses: [json({}, 429, { "retry-after": "120" })],
   });
-  await assert.rejects(
-    gitkraken.fetch(context),
-    (e: unknown) => e instanceof RateLimited && e.until === NOW + 120,
-  );
+  await assert.rejects(gitkraken.fetch(context), (e: unknown) => e instanceof RateLimited && e.until === NOW + 120);
 });
 
 test("gitkraken: malformed payloads and HTTP errors are sanitized", async () => {
-  for (const response of [
-    json({}),
-    new Response("secret-body"),
-    json({}, 500),
-  ]) {
+  for (const response of [json({}), new Response("secret-body"), json({}, 500)]) {
     const context = fakeContext({ ...configured, responses: [response] });
     await assert.rejects(
       gitkraken.fetch(context),
-      (e: unknown) =>
-        e instanceof HttpError && !e.message.includes("secret-body"),
+      (e: unknown) => e instanceof HttpError && !e.message.includes("secret-body"),
     );
   }
 });
@@ -118,12 +103,7 @@ test("gitkraken: organization header, unlimited and absent organization data", a
     { used: 0, limit: -2, resetsOn: "2030-09-27T00:00:00Z" },
     { used: 1, limit: 5, resetsOn: "2030-09-27" },
   ])
-    await assert.rejects(
-      gitkraken.fetch(
-        fakeContext({ ...configured, responses: responses({ data }) }),
-      ),
-      HttpError,
-    );
+    await assert.rejects(gitkraken.fetch(fakeContext({ ...configured, responses: responses({ data }) })), HttpError);
 });
 
 test("gitkraken: every request has a timeout and rejects redirects", async () => {
@@ -139,9 +119,7 @@ test("gitkraken: every request has a timeout and rejects redirects", async () =>
 });
 
 test("gitkraken: saved API key is resolved from companion config", async () => {
-  const env = Object.fromEntries(
-    Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)),
-  );
+  const env = Object.fromEntries(Object.entries(configured.env).filter(([name]) => !/KEY|TOKEN/.test(name)));
   const context = fakeContext({
     env,
     files: {

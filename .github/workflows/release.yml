@@ -14,12 +14,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
-      - uses: nubjs/setup-nub@v0
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
         with:
           node-version-file: .nvmrc
-
-      - run: nub ci
 
       - name: Read the manifest
         id: manifest
@@ -47,9 +48,9 @@ jobs:
             echo "- API version: $api_version"
           } > "$RUNNER_TEMP/details.md"
 
-      - run: nub run typecheck
+      - run: vp run typecheck
 
-      - run: nub run build -- --tgz-name "{id}-{version}.tgz"
+      - run: vp run build --tgz-name "{id}-{version}.tgz"
 
       # A release made from the UI already exists by the time the tag push gets here: attach the archive to it and keep whatever notes were written by hand, below the app's details.
       - name: Publish the release

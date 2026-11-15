@@ -6,12 +6,16 @@ type Snapshot = { at: number; entries: Map<string, string> };
 const caches = new WeakMap<Context, Map<string, Snapshot>>();
 const LIMIT = 64 * 1024 * 1024;
 
-function invalid(): never { throw new Error("Invalid browser storage"); }
+function invalid(): never {
+  throw new Error("Invalid browser storage");
+}
 
 class Reader {
   offset = 0;
   readonly data: Buffer;
-  constructor(data: Buffer) { this.data = data; }
+  constructor(data: Buffer) {
+    this.data = data;
+  }
   byte(): number {
     if (this.offset >= this.data.length) invalid();
     return this.data[this.offset++];
@@ -32,14 +36,16 @@ class Reader {
     this.offset += length;
     return bytes;
   }
-  field(): Buffer { return this.take(this.varint()); }
+  field(): Buffer {
+    return this.take(this.varint());
+  }
 }
 
 function checksum(bytes: Buffer): number {
   let crc = 0xffffffff;
   for (const byte of bytes) {
     crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0x82f63b78 : 0);
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0x82f63b78 : 0);
   }
   crc = (crc ^ 0xffffffff) >>> 0;
   return (((crc >>> 15) | (crc << 17)) + 0xa282ead8) >>> 0;
@@ -52,7 +58,8 @@ function snappy(data: Buffer): Buffer {
   const out = Buffer.alloc(size);
   let written = 0;
   while (reader.offset < data.length) {
-    const tag = reader.byte(), kind = tag & 3;
+    const tag = reader.byte(),
+      kind = tag & 3;
     let length: number;
     if (kind === 0) {
       length = tag >>> 2;
@@ -92,7 +99,9 @@ function entries(block: Buffer): [Buffer, Buffer][] {
   const result: [Buffer, Buffer][] = [];
   let previous = Buffer.alloc(0);
   while (reader.offset < end) {
-    const shared = reader.varint(), added = reader.varint(), length = reader.varint();
+    const shared = reader.varint(),
+      added = reader.varint(),
+      length = reader.varint();
     if (shared > previous.length) invalid();
     const key = Buffer.concat([previous.subarray(0, shared), reader.take(added)]);
     result.push([key, reader.take(length)]);
@@ -104,7 +113,8 @@ function entries(block: Buffer): [Buffer, Buffer][] {
 function table(data: Buffer, put: (key: Buffer, sequence: bigint, value: Buffer | null) => void): void {
   if (data.length < 48 || data.readBigUInt64LE(data.length - 8) !== 0xdb4775248b80fb57n) invalid();
   function block(handle: Reader): Buffer {
-    const offset = handle.varint(), size = handle.varint();
+    const offset = handle.varint(),
+      size = handle.varint();
     if (size > LIMIT || offset > data.length - size - 5) invalid();
     const bytes = data.subarray(offset, offset + size);
     if (checksum(data.subarray(offset, offset + size + 1)) !== data.readUInt32LE(offset + size + 1)) invalid();
@@ -114,11 +124,13 @@ function table(data: Buffer, put: (key: Buffer, sequence: bigint, value: Buffer 
     return invalid();
   }
   const footer = new Reader(data.subarray(data.length - 48, data.length - 8));
-  footer.varint(); footer.varint(); // Metaindex handle precedes the index handle.
+  footer.varint();
+  footer.varint(); // Metaindex handle precedes the index handle.
   for (const [, handle] of entries(block(footer))) {
     for (const [key, value] of entries(block(new Reader(handle)))) {
       if (key.length < 8) invalid();
-      const tag = key.readBigUInt64LE(key.length - 8), type = Number(tag & 255n);
+      const tag = key.readBigUInt64LE(key.length - 8),
+        type = Number(tag & 255n);
       if (type !== 0 && type !== 1) invalid();
       put(key.subarray(0, -8), tag >> 8n, type === 0 ? null : value);
     }
@@ -128,13 +140,16 @@ function table(data: Buffer, put: (key: Buffer, sequence: bigint, value: Buffer 
 function log(data: Buffer, put: (key: Buffer, sequence: bigint, value: Buffer | null) => void): void {
   records(data, (bytes) => {
     if (bytes.length < 12) invalid();
-    const sequence = bytes.readBigUInt64LE(0), count = bytes.readUInt32LE(8);
-    const reader = new Reader(bytes); reader.offset = 12;
+    const sequence = bytes.readBigUInt64LE(0),
+      count = bytes.readUInt32LE(8);
+    const reader = new Reader(bytes);
+    reader.offset = 12;
     const pending: [Buffer, bigint, Buffer | null][] = [];
     for (let i = 0; i < count; i++) {
       const type = reader.byte();
       if (type !== 0 && type !== 1) invalid();
-      const key = reader.field(), value = type === 1 ? reader.field() : null;
+      const key = reader.field(),
+        value = type === 1 ? reader.field() : null;
       pending.push([key, sequence + BigInt(i), value]);
     }
     if (reader.offset !== bytes.length) invalid();
@@ -148,17 +163,27 @@ function records(data: Buffer, consume: (bytes: Buffer) => void): void {
     const end = Math.min(start + 32768, data.length);
     for (let offset = start; offset + 7 <= end;) {
       const expected = data.readUInt32LE(offset);
-      const length = data.readUInt16LE(offset + 4), type = data[offset + 6];
+      const length = data.readUInt16LE(offset + 4),
+        type = data[offset + 6];
       offset += 7;
       if (type === 0 && length === 0) break;
-      if (offset + length > end) { fragments = null; break; }
-      const bytes = data.subarray(offset, offset + length); offset += length;
+      if (offset + length > end) {
+        fragments = null;
+        break;
+      }
+      const bytes = data.subarray(offset, offset + length);
+      offset += length;
       if (checksum(Buffer.concat([Buffer.from([type]), bytes])) !== expected) invalid();
-      if (type === 1) { fragments = null; consume(bytes); }
-      else if (type === 2) fragments = [bytes];
+      if (type === 1) {
+        fragments = null;
+        consume(bytes);
+      } else if (type === 2) fragments = [bytes];
       else if (type === 3 && fragments) fragments.push(bytes);
-      else if (type === 4 && fragments) { fragments.push(bytes); consume(Buffer.concat(fragments)); fragments = null; }
-      else fragments = null;
+      else if (type === 4 && fragments) {
+        fragments.push(bytes);
+        consume(Buffer.concat(fragments));
+        fragments = null;
+      } else fragments = null;
     }
   }
 }
@@ -170,7 +195,11 @@ function text(bytes: Buffer): string | null {
 }
 
 async function optional<T>(work: () => Promise<T>): Promise<T | null> {
-  try { return await work(); } catch { return null; }
+  try {
+    return await work();
+  } catch {
+    return null;
+  }
 }
 
 async function liveFiles(context: Context, path: string, files: string[]): Promise<string[]> {
@@ -181,7 +210,8 @@ async function liveFiles(context: Context, path: string, files: string[]): Promi
   const manifest = await context.readFileBytes(`${path}/${name}`);
   if (!manifest || manifest.length > LIMIT) return [];
   const tables = new Set<number>();
-  let logNumber = 0, previousLog = 0;
+  let logNumber = 0,
+    previousLog = 0;
   records(Buffer.from(manifest), (bytes) => {
     const reader = new Reader(bytes);
     while (reader.offset < bytes.length) {
@@ -190,10 +220,18 @@ async function liveFiles(context: Context, path: string, files: string[]): Promi
       else if (tag === 2) logNumber = reader.varint();
       else if (tag === 9) previousLog = reader.varint();
       else if (tag === 3 || tag === 4) reader.varint();
-      else if (tag === 5) { reader.varint(); reader.field(); }
-      else if (tag === 6) { reader.varint(); tables.delete(reader.varint()); }
-      else if (tag === 7) {
-        reader.varint(); tables.add(reader.varint()); reader.varint(); reader.field(); reader.field();
+      else if (tag === 5) {
+        reader.varint();
+        reader.field();
+      } else if (tag === 6) {
+        reader.varint();
+        tables.delete(reader.varint());
+      } else if (tag === 7) {
+        reader.varint();
+        tables.add(reader.varint());
+        reader.varint();
+        reader.field();
+        reader.field();
       } else invalid();
     }
   });
@@ -205,8 +243,12 @@ async function liveFiles(context: Context, path: string, files: string[]): Promi
 
 async function snapshot(context: Context, path: string, origin: string): Promise<Map<string, string>> {
   let cache = caches.get(context);
-  if (!cache) { cache = new Map(); caches.set(context, cache); }
-  const id = `${path}\n${origin}`, cached = cache.get(id);
+  if (!cache) {
+    cache = new Map();
+    caches.set(context, cache);
+  }
+  const id = `${path}\n${origin}`,
+    cached = cache.get(id);
   if (cached && context.now() - cached.at < 600) return cached.entries;
   const versions = new Map<string, Version>();
   const prefix = Buffer.from(`_${origin}\0`);
@@ -226,7 +268,8 @@ async function snapshot(context: Context, path: string, origin: string): Promise
       const bytes = await context.readFileBytes(`${path}/${file}`);
       if (!bytes || bytes.length > LIMIT) invalid();
       const data = Buffer.from(bytes);
-      if (file.endsWith(".log")) log(data, put); else table(data, put);
+      if (file.endsWith(".log")) log(data, put);
+      else table(data, put);
       return true;
     });
     if (!parsed) unreadable = true;
@@ -243,18 +286,30 @@ async function snapshot(context: Context, path: string, origin: string): Promise
 
 /** Returns values from the first matching profile. Never combines accounts across profiles. */
 export function browserLocalStorage(context: Context, origin: string, key: string): Promise<string | null>;
-export function browserLocalStorage(context: Context, origin: string, key: (key: string) => boolean,
-  accept?: (entries: Map<string, string>) => boolean): Promise<Map<string, string> | null>;
-export async function browserLocalStorage(context: Context, origin: string, key: string | ((key: string) => boolean),
-  accept?: (entries: Map<string, string>) => boolean): Promise<string | Map<string, string> | null> {
+export function browserLocalStorage(
+  context: Context,
+  origin: string,
+  key: (key: string) => boolean,
+  accept?: (entries: Map<string, string>) => boolean,
+): Promise<Map<string, string> | null>;
+export async function browserLocalStorage(
+  context: Context,
+  origin: string,
+  key: string | ((key: string) => boolean),
+  accept?: (entries: Map<string, string>) => boolean,
+): Promise<string | Map<string, string> | null> {
   if (context.platform !== "darwin" && context.platform !== "linux") return null;
   for (const [mac, linux] of browsers) {
     if (context.platform === "linux" && !linux) continue;
-    const root = context.platform === "darwin" ? `${context.home}/Library/Application Support/${mac}`
-      : `${context.env.XDG_CONFIG_HOME || `${context.home}/.config`}/${linux}`;
+    const root =
+      context.platform === "darwin"
+        ? `${context.home}/Library/Application Support/${mac}`
+        : `${context.env.XDG_CONFIG_HOME || `${context.home}/.config`}/${linux}`;
     const names = await optional(() => context.listDir(root));
     if (!names) continue;
-    const profiles = names.filter((name) => name === "Default" || /^Profile \d+$/.test(name) || /^user-[^/]+$/.test(name)).sort();
+    const profiles = names
+      .filter((name) => name === "Default" || /^Profile \d+$/.test(name) || /^user-[^/]+$/.test(name))
+      .sort();
     profiles.push("");
     for (const profile of profiles) {
       const values = await snapshot(context, `${root}${profile ? `/${profile}` : ""}/Local Storage/leveldb`, origin);
