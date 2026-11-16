@@ -106,7 +106,7 @@ When in doubt, choose the cheaper option: a slower refresh, fewer requests, less
 
 - The companion in `companion/` is a separate Node package. It writes the feed to `/ext/apps_data/js_apps/<app id>/usage.json` with the storage API; the app reads the same file as `/ext/data/usage.json`. `companion/src/bar.ts` holds the app id, and a test checks it against the manifest.
 - Each provider in `companion/src/providers/` only reads an existing login or key. Do not add token refreshes for providers whose refresh tokens rotate (Claude, Codex): a second refresher signs the user's own tool out.
-- The feed format is documented in `README.md` and must stay the same as the CLIProxyAPI hub's `GET /usage` in afonsojramos/ha-addons.
+- The feed format is documented in `README.md` and must stay the same as the CLIProxyAPI hub's `GET /usage`, which is maintained in a separate repository.
 - To check the display, read it back with `GET /api/screen?display=0`: the body is base64 of 72×16 pixels, 3 bytes each, in BGR order.
 
 ## Before finishing

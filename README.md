@@ -251,11 +251,9 @@ running with launchd or systemd, or use a hub for an always-on source.
 ## CLIProxyAPI hub
 
 A [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) hub that serves `GET /usage` in
-the feed format below (such as the Home Assistant add-on in
-[afonsojramos/ha-addons](https://github.com/afonsojramos/ha-addons)) can feed the bar directly,
-without a computer. Set **Hub URL** in the app's settings, for example
-`http://192.168.1.220:8318/usage`. When the hub and the companion report the same account, the
-bar shows the more recent measurement.
+the feed format below can feed the bar directly, without a computer. Set **Hub URL** in the app's
+settings, for example `http://192.168.1.220:8318/usage`. When the hub and the companion report the
+same account, the bar shows the more recent measurement.
 
 ## Feed format
 
