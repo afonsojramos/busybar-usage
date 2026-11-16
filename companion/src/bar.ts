@@ -2,7 +2,7 @@ import { BusyBar } from "@busy-app/busy-lib";
 import type { Feed } from "./feed.ts";
 
 /** Must match the id in src/appmeta/manifest.json; a test checks it. */
-export const APP_ID = "app.afonsojramos.usage";
+export const APP_ID = "me.afonsojramos.usage";
 /** The app's private storage, which the app reads as /ext/data. */
 export const FEED_PATH = `/ext/apps_data/js_apps/${APP_ID}/usage.json`;
 

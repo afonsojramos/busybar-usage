@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/requires-Node%2024-339933" alt="Requires Node 24" />
   <img src="https://img.shields.io/badge/BUSY%20Bar-firmware%201.4.1-e4002b" alt="BUSY Bar firmware 1.4.1" />
   <img src="https://img.shields.io/badge/providers-113-d97757" alt="113 providers" />
+  <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License: GPL-3.0" />
 </p>
 
 <table align="center">
@@ -292,10 +293,16 @@ lifecycle and resource rules. The companion's provider modules take a `Context` 
 Keychain and `fetch`, so each one is tested against fixtures without real logins.
 
 The images in this README are the bar's own screen. With the bar on USB,
-`node scripts/screenshot.ts docs/claude.png` saves what it shows.
+`node scripts/screenshot.ts docs/claude.png` saves what it shows, and `--raw` saves the 72×16
+pixels themselves, like the BUSY Apps Catalog screenshots in `screenshots/`.
 
 ## Credits
 
 The provider requests follow [CodexBar](https://github.com/steipete/CodexBar) by Peter
 Steinberger (MIT). The idea of reading Claude Code's sign-in without refreshing it comes from
 [busybar-limits](https://github.com/rbhbokka/busybar-limits).
+
+## License
+
+[GPL-3.0](LICENSE). The provider code ported from CodexBar and the files from the BUSY Bar app
+template keep their MIT notices in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
